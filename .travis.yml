@@ -4,6 +4,10 @@ language: python
 # Run the test runner using the same version of Python we use.
 python: 3.5
 
+# Use rabbitmq during tests
+services:
+  - rabbitmq
+
 # Install the test runner.
 install: pip install tox
 

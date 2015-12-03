@@ -63,7 +63,7 @@ author = 'iHeartRadio'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-release = pkg_resources.get_distribution('henson_kafka').version
+release = pkg_resources.get_distribution('henson_amqp').version
 # The short X.Y version.
 version = release.rsplit('.', 1)[0]
 
