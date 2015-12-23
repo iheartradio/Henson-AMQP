@@ -15,40 +15,20 @@ __version__ = get_distribution(__package__).version
 # acknowledgement, (de)serialization, and other convenience functions
 Message = namedtuple('Message', ('body', 'envelope', 'properties'))
 
-# This wrapper object makes it easier to pass around AMQP settings over
-# specifying all settings as function arguments in everywhere they're
-# required
-AMQPSettings = namedtuple(
-    'AMQPSettings',
-    ('host', 'port', 'username', 'password', 'virtual_host', 'kwargs'),
-)
-
 
 class Consumer:
     """A consumer of an AMQP queue.
 
     Args:
-        settings (AMQPSettings): A settings object specifying options to
-            be passed to ``aioamqp.connect``.
-        queue_name (str): The name of the queue from which to read.
-        exchange_name (Optional[str]): If supplied, the name of the
-            exchange that the queue is bound to. Defaults to ``''``.
-        exchange_type (Optional[str]): The type of the exchange
-            specified by ``exchange_name``. Defaults to ``'direct'``.
-        routing_key (Optional[str]): The routing key used to bind the
-            queue and exchange. Defaults to ``''``.
+        app (henson.base.Application): The application for which this
+            consumer consumes.
     """
 
-    def __init__(self, settings, queue_name, exchange_name='',
-                 exchange_type='direct', routing_key=''):
+    def __init__(self, app):
         """Initialize the consumer."""
-        self.settings = settings
-        self.queue_name = queue_name
-        self.exchange_name = exchange_name
-        self.exchange_type = exchange_type
-        self.routing_key = routing_key
-
-        # Declare some attributes that will be set later by async calls
+        # Store a reference to the app and declare some attributes that
+        # will be set later by async calls.
+        self.app = app
         self._message_queue = None
         self.transport = None
         self.protocol = None
@@ -78,29 +58,33 @@ class Consumer:
         # Create a connection to the broker
         self._message_queue = asyncio.Queue()
         self.transport, self.protocol = yield from aioamqp.connect(
-            host=self.settings.host,
-            port=self.settings.port,
-            login=self.settings.username,
-            password=self.settings.password,
-            virtual_host=self.settings.virtual_host,
-            **self.settings.kwargs
+            host=self.app.settings['AMQP_HOST'],
+            port=self.app.settings['AMQP_PORT'],
+            login=self.app.settings['AMQP_USERNAME'],
+            password=self.app.settings['AMQP_PASSWORD'],
+            virtual_host=self.app.settings['AMQP_VIRTUAL_HOST'],
+            **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
 
         # Declare the queue and exchange that we expect to read from
         self.channel = yield from self.protocol.channel()
-        yield from self.channel.queue_declare(self.queue_name)
-        if self.exchange_name:
+        yield from self.channel.queue_declare(
+            self.app.settings['AMQP_QUEUE_INBOUND'])
+        if self.app.settings['AMQP_EXCHANGE_INBOUND']:
             yield from self.channel.exchange_declare(
-                exchange_name=self.exchange_name,
-                type_name=self.exchange_type,
+                exchange_name=self.app.settings['AMQP_EXCHANGE_INBOUND'],
+                type_name=self.app.settings['AMQP_EXCHANGE_TYPE_INBOUND'],
             )
             yield from self.channel.queue_bind(
-                self.queue_name, self.exchange_name, self.routing_key)
+                self.app.settings['AMQP_QUEUE_INBOUND'],
+                self.app.settings['AMQP_EXCHANGE_INBOUND'],
+                self.app.settings['AMQP_ROUTING_KEY_INBOUND'],
+            )
 
         # Begin reading and assign the callback function to be called
         # with each message retrieved from the broker
         yield from self.channel.basic_consume(
-            queue_name=self.queue_name,
+            queue_name=self.app.settings['AMQP_QUEUE_INBOUND'],
             callback=self._enqueue_message,
         )
 
@@ -129,22 +113,13 @@ class Producer:
     """A producer of an AMQP queue.
 
     Args:
-        settings (AMQPSettings): A settings object specifying options to
-            be passed to ``aioamqp.connect``.
-        exchange_name (str): The name of the exchange to publish to.
-        exchange_type (Optional[str]): The type of the exchange
-            specified by ``exchange_name``. Defaults to ``'direct'``.
-        routing_key (Optional[str]): The routing key that should be used
-            when publishing messages. Defaults to ``''``.
+        app (henson.base.Application): The application for which this
+            producer produces.
     """
 
-    def __init__(self, settings, exchange_name, exchange_type='direct',
-                 routing_key=''):
+    def __init__(self, app):
         """Initialize the producer."""
-        self.settings = settings
-        self.exchange_name = exchange_name
-        self.exchange_type = exchange_type
-        self.routing_key = routing_key
+        self.app = app
 
     @asyncio.coroutine
     def send(self, message):
@@ -154,20 +129,23 @@ class Producer:
             message (str): The body of the message to send.
         """
         self.transport, self.protocol = yield from aioamqp.connect(
-            host=self.settings.host,
-            port=self.settings.port,
-            login=self.settings.username,
-            password=self.settings.password,
-            virtual_host=self.settings.virtual_host,
-            **self.settings.kwargs
+            host=self.app.settings['AMQP_HOST'],
+            port=self.app.settings['AMQP_PORT'],
+            login=self.app.settings['AMQP_USERNAME'],
+            password=self.app.settings['AMQP_PASSWORD'],
+            virtual_host=self.app.settings['AMQP_VIRTUAL_HOST'],
+            **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
         channel = yield from self.protocol.channel()
         yield from channel.exchange_declare(
-            exchange_name=self.exchange_name,
-            type_name=self.exchange_type,
+            exchange_name=self.app.settings['AMQP_EXCHANGE_OUTBOUND'],
+            type_name=self.app.settings['AMQP_EXCHANGE_TYPE_OUTBOUND'],
         )
         yield from channel.publish(
-            message, self.exchange_name, self.routing_key)
+            message,
+            self.app.settings['AMQP_EXCHANGE_OUTBOUND'],
+            self.app.settings['AMQP_ROUTING_KEY_OUTBOUND'],
+        )
         # yield from self.protocol.close()
         # self.transport.close()
 
@@ -195,18 +173,6 @@ class AMQP(Extension):
         'AMQP_ROUTING_KEY_OUTBOUND': '',
     }
 
-    def init_app(self, app):
-        """Initialize the application."""
-        super().init_app(app)
-        self.amqp_settings = AMQPSettings(
-            host=app.settings['AMQP_HOST'],
-            port=app.settings['AMQP_PORT'],
-            username=app.settings['AMQP_USERNAME'],
-            password=app.settings['AMQP_PASSWORD'],
-            virtual_host=app.settings['AMQP_VIRTUAL_HOST'],
-            kwargs=app.settings['AMQP_CONNECTION_KWARGS'],
-        )
-
     def consumer(self):
         """Return a new AMQP consumer.
 
@@ -215,13 +181,7 @@ class AMQP(Extension):
                 from the AMQP broker and queue specified the
                 Application's settings.
         """
-        return Consumer(
-            settings=self.amqp_settings,
-            queue_name=self.app.settings['AMQP_QUEUE_INBOUND'],
-            exchange_name=self.app.settings['AMQP_EXCHANGE_INBOUND'],
-            exchange_type=self.app.settings['AMQP_EXCHANGE_TYPE_INBOUND'],
-            routing_key=self.app.settings['AMQP_ROUTING_KEY_INBOUND'],
-        )
+        return Consumer(self.app)
 
     def producer(self):
         """Return a new AMQP producer.
@@ -231,9 +191,4 @@ class AMQP(Extension):
                 the AMQP broker and exchange specified by the
                 Application's settings.
         """
-        return Producer(
-            settings=self.amqp_settings,
-            exchange_name=self.app.settings['AMQP_EXCHANGE_OUTBOUND'],
-            exchange_type=self.app.settings['AMQP_EXCHANGE_TYPE_OUTBOUND'],
-            routing_key=self.app.settings['AMQP_ROUTING_KEY_OUTBOUND'],
-        )
+        return Producer(self.app)
