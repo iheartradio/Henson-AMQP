@@ -5,35 +5,27 @@ from unittest import mock
 
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
+from henson import Application
 import pytest
 
 from henson_amqp import AMQP
 
 
-class Application:
-    """A stub application that can be used for testing.
+class Settings:
+    """A container object for test settings."""
 
-    Args:
-        **settings: Keyword arguments that will be used as settings.
-    """
-
-    def __init__(self, **settings):
-        """Initialize the instance."""
-        self.name = 'testing'
-        self.settings = settings
+    AMQP_HOST = os.environ.get('TEST_AMQP_HOST', 'localhost')
+    AMQP_QUEUE_INBOUND = 'test.in'
+    AMQP_EXCHANGE_INBOUND = 'test.in'
+    AMQP_EXCHANGE_OUTBOUND = 'test.in'
+    AMQP_ROUTING_KEY_INBOUND = 'test.in'
+    AMQP_ROUTING_KEY_OUTBOUND = 'test.in'
 
 
 @pytest.fixture
 def test_amqp():
     """Return an extension bound to the test app."""
-    app = Application(
-        AMQP_HOST=os.environ.get('TEST_AMQP_HOST', 'localhost'),
-        AMQP_QUEUE_INBOUND='test.in',
-        AMQP_EXCHANGE_INBOUND='test.in',
-        AMQP_EXCHANGE_OUTBOUND='test.in',
-        AMQP_ROUTING_KEY_INBOUND='test.in',
-        AMQP_ROUTING_KEY_OUTBOUND='test.in',
-    )
+    app = Application('testing', Settings)
     return AMQP(app)
 
 
