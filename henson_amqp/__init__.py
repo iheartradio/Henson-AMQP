@@ -34,9 +34,10 @@ class Consumer:
         self.protocol = None
         self.channel = None
 
-        # Register the message acknowledgement callback with the
-        # application.
+        # Register the message acknowledgement and application teardown
+        # callbacks with the application.
         self.app.message_acknowledgement(self.acknowledge_message)
+        self.app.application_teardown(self.teardown)
 
     @asyncio.coroutine
     def acknowledge_message(self, app, message):
@@ -49,6 +50,19 @@ class Consumer:
                 the application.
         """
         yield from self.channel.basic_client_ack(message.envelope.delivery_tag)
+
+    @asyncio.coroutine
+    def teardown(self, app):
+        """Cleanup the protocol and transport before shutting down.
+
+        Args:
+            app (henson.base.Application): The application to which this
+                Consumer belongs.
+        """
+        if self.protocol is not None:
+            yield from self.protocol.close()
+        if self.transport is not None:
+            self.transport.close()
 
     @asyncio.coroutine
     def _enqueue_message(self, channel, body, envelope, properties):
@@ -101,12 +115,6 @@ class Consumer:
             callback=self._enqueue_message,
         )
 
-        # TODO: once Henson supports application teardown, this should
-        # happen in that callback
-        # Close the connection
-        # yield from self.protocol.close()
-        # self.transport.close()
-
     @asyncio.coroutine
     def read(self):
         """Read a single message from the message queue.
@@ -132,7 +140,26 @@ class Producer:
 
     def __init__(self, app):
         """Initialize the producer."""
+        # Store a reference to the application for later use.
         self.app = app
+        self.transport = None
+        self.protocol = None
+
+        # Register a teardown callback.
+        self.app.application_teardown(self.teardown)
+
+    @asyncio.coroutine
+    def teardown(self, app):
+        """Cleanup the protocol and transport before shutting down.
+
+        Args:
+            app (henson.base.Application): The application to which this
+                Consumer belongs.
+        """
+        if self.protocol is not None:
+            yield from self.protocol.close()
+        if self.transport is not None:
+            self.transport.close()
 
     @asyncio.coroutine
     def send(self, message):
@@ -159,8 +186,6 @@ class Producer:
             self.app.settings['AMQP_EXCHANGE_OUTBOUND'],
             self.app.settings['AMQP_ROUTING_KEY_OUTBOUND'],
         )
-        # yield from self.protocol.close()
-        # self.transport.close()
 
 
 class AMQP(Extension):
