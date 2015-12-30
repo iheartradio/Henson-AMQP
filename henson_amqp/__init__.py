@@ -34,6 +34,22 @@ class Consumer:
         self.protocol = None
         self.channel = None
 
+        # Register the message acknowledgement callback with the
+        # application.
+        self.app.message_acknowledgement(self.acknowledge_message)
+
+    @asyncio.coroutine
+    def acknowledge_message(self, app, message):
+        """Acknowledge a message on the AMQP server.
+
+        Args:
+            app (henson.base.Application): The application that
+                processed the message.
+            message (Message): The message returned from the consumer to
+                the application.
+        """
+        yield from self.channel.basic_client_ack(message.envelope.delivery_tag)
+
     @asyncio.coroutine
     def _enqueue_message(self, channel, body, envelope, properties):
         """Add fetched messages to the internal message queue.
@@ -48,9 +64,6 @@ class Consumer:
         """
         message = Message(body, envelope, properties)
         yield from self._message_queue.put(message)
-        # TODO: once Henson supports a message acknowledgement callback,
-        # the ack should happen there instead
-        yield from channel.basic_client_ack(envelope.delivery_tag)
 
     @asyncio.coroutine
     def _begin_consuming(self):
