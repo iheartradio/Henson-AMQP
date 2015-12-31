@@ -37,7 +37,7 @@ class Consumer:
         # Register the message acknowledgement and application teardown
         # callbacks with the application.
         self.app.message_acknowledgement(self.acknowledge_message)
-        self.app.application_teardown(self.teardown)
+        self.app.teardown(self.teardown)
 
     @asyncio.coroutine
     def acknowledge_message(self, app, message):
@@ -146,7 +146,7 @@ class Producer:
         self.protocol = None
 
         # Register a teardown callback.
-        self.app.application_teardown(self.teardown)
+        self.app.teardown(self.teardown)
 
     @asyncio.coroutine
     def teardown(self, app):
