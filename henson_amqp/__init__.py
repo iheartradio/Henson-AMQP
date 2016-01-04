@@ -30,17 +30,17 @@ class Consumer:
         # will be set later by async calls.
         self.app = app
         self._message_queue = None
-        self.transport = None
-        self.protocol = None
-        self.channel = None
+        self._transport = None
+        self._protocol = None
+        self._channel = None
 
         # Register the message acknowledgement and application teardown
         # callbacks with the application.
-        self.app.message_acknowledgement(self.acknowledge_message)
-        self.app.teardown(self.teardown)
+        self.app.message_acknowledgement(self._acknowledge_message)
+        self.app.teardown(self._teardown)
 
     @asyncio.coroutine
-    def acknowledge_message(self, app, message):
+    def _acknowledge_message(self, app, message):
         """Acknowledge a message on the AMQP server.
 
         Args:
@@ -49,20 +49,20 @@ class Consumer:
             message (Message): The message returned from the consumer to
                 the application.
         """
-        yield from self.channel.basic_client_ack(message.envelope.delivery_tag)
+        yield from self._channel.basic_client_ack(message.envelope.delivery_tag)  # NOQA: line length
 
     @asyncio.coroutine
-    def teardown(self, app):
+    def _teardown(self, app):
         """Cleanup the protocol and transport before shutting down.
 
         Args:
             app (henson.base.Application): The application to which this
                 Consumer belongs.
         """
-        if self.protocol is not None:
-            yield from self.protocol.close()
-        if self.transport is not None:
-            self.transport.close()
+        if self._protocol is not None:
+            yield from self._protocol.close()
+        if self._transport is not None:
+            self._transport.close()
 
     @asyncio.coroutine
     def _enqueue_message(self, channel, body, envelope, properties):
@@ -84,7 +84,7 @@ class Consumer:
         """Begin reading messages from the specified AMQP broker."""
         # Create a connection to the broker
         self._message_queue = asyncio.Queue()
-        self.transport, self.protocol = yield from aioamqp.connect(
+        self._transport, self._protocol = yield from aioamqp.connect(
             host=self.app.settings['AMQP_HOST'],
             port=self.app.settings['AMQP_PORT'],
             login=self.app.settings['AMQP_USERNAME'],
@@ -94,15 +94,15 @@ class Consumer:
         )
 
         # Declare the queue and exchange that we expect to read from
-        self.channel = yield from self.protocol.channel()
-        yield from self.channel.queue_declare(
+        self._channel = yield from self._protocol.channel()
+        yield from self._channel.queue_declare(
             self.app.settings['AMQP_QUEUE_INBOUND'])
         if self.app.settings['AMQP_EXCHANGE_INBOUND']:
-            yield from self.channel.exchange_declare(
+            yield from self._channel.exchange_declare(
                 exchange_name=self.app.settings['AMQP_EXCHANGE_INBOUND'],
                 type_name=self.app.settings['AMQP_EXCHANGE_TYPE_INBOUND'],
             )
-            yield from self.channel.queue_bind(
+            yield from self._channel.queue_bind(
                 self.app.settings['AMQP_QUEUE_INBOUND'],
                 self.app.settings['AMQP_EXCHANGE_INBOUND'],
                 self.app.settings['AMQP_ROUTING_KEY_INBOUND'],
@@ -110,7 +110,7 @@ class Consumer:
 
         # Begin reading and assign the callback function to be called
         # with each message retrieved from the broker
-        yield from self.channel.basic_consume(
+        yield from self._channel.basic_consume(
             queue_name=self.app.settings['AMQP_QUEUE_INBOUND'],
             callback=self._enqueue_message,
         )
@@ -142,24 +142,24 @@ class Producer:
         """Initialize the producer."""
         # Store a reference to the application for later use.
         self.app = app
-        self.transport = None
-        self.protocol = None
+        self._transport = None
+        self._protocol = None
 
         # Register a teardown callback.
-        self.app.teardown(self.teardown)
+        self.app.teardown(self._teardown)
 
     @asyncio.coroutine
-    def teardown(self, app):
+    def _teardown(self, app):
         """Cleanup the protocol and transport before shutting down.
 
         Args:
             app (henson.base.Application): The application to which this
                 Consumer belongs.
         """
-        if self.protocol is not None:
-            yield from self.protocol.close()
-        if self.transport is not None:
-            self.transport.close()
+        if self._protocol is not None:
+            yield from self._protocol.close()
+        if self._transport is not None:
+            self._transport.close()
 
     @asyncio.coroutine
     def send(self, message):
@@ -168,7 +168,7 @@ class Producer:
         Args:
             message (str): The body of the message to send.
         """
-        self.transport, self.protocol = yield from aioamqp.connect(
+        self._transport, self._protocol = yield from aioamqp.connect(
             host=self.app.settings['AMQP_HOST'],
             port=self.app.settings['AMQP_PORT'],
             login=self.app.settings['AMQP_USERNAME'],
@@ -176,7 +176,7 @@ class Producer:
             virtual_host=self.app.settings['AMQP_VIRTUAL_HOST'],
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
-        channel = yield from self.protocol.channel()
+        channel = yield from self._protocol.channel()
         yield from channel.exchange_declare(
             exchange_name=self.app.settings['AMQP_EXCHANGE_OUTBOUND'],
             type_name=self.app.settings['AMQP_EXCHANGE_TYPE_OUTBOUND'],
