@@ -89,7 +89,7 @@ class Consumer:
             port=self.app.settings['AMQP_PORT'],
             login=self.app.settings['AMQP_USERNAME'],
             password=self.app.settings['AMQP_PASSWORD'],
-            virtual_host=self.app.settings['AMQP_VIRTUAL_HOST'],
+            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
 
@@ -177,7 +177,7 @@ class Producer:
             port=self.app.settings['AMQP_PORT'],
             login=self.app.settings['AMQP_USERNAME'],
             password=self.app.settings['AMQP_PASSWORD'],
-            virtual_host=self.app.settings['AMQP_VIRTUAL_HOST'],
+            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
         channel = yield from self._protocol.channel()
