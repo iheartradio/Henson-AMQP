@@ -95,23 +95,27 @@ class Consumer:
 
         # Declare the queue and exchange that we expect to read from
         self._channel = yield from self._protocol.channel()
+
         yield from self._channel.queue_declare(
-            self.app.settings['AMQP_QUEUE_INBOUND'])
-        if self.app.settings['AMQP_EXCHANGE_INBOUND']:
+            queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
+            durable=self.app.settings['AMQP_INBOUND_QUEUE_DURABLE'],
+        )
+        if self.app.settings['AMQP_INBOUND_EXCHANGE']:
             yield from self._channel.exchange_declare(
-                exchange_name=self.app.settings['AMQP_EXCHANGE_INBOUND'],
-                type_name=self.app.settings['AMQP_EXCHANGE_TYPE_INBOUND'],
+                durable=self.app.settings['AMQP_INBOUND_EXCHANGE_DURABLE'],
+                exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
+                type_name=self.app.settings['AMQP_INBOUND_EXCHANGE_TYPE'],
             )
             yield from self._channel.queue_bind(
-                self.app.settings['AMQP_QUEUE_INBOUND'],
-                self.app.settings['AMQP_EXCHANGE_INBOUND'],
-                self.app.settings['AMQP_ROUTING_KEY_INBOUND'],
+                queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
+                exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
+                routing_key=self.app.settings['AMQP_INBOUND_ROUTING_KEY'],
             )
 
         # Begin reading and assign the callback function to be called
         # with each message retrieved from the broker
         yield from self._channel.basic_consume(
-            queue_name=self.app.settings['AMQP_QUEUE_INBOUND'],
+            queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
             callback=self._enqueue_message,
         )
 
@@ -178,13 +182,14 @@ class Producer:
         )
         channel = yield from self._protocol.channel()
         yield from channel.exchange_declare(
-            exchange_name=self.app.settings['AMQP_EXCHANGE_OUTBOUND'],
-            type_name=self.app.settings['AMQP_EXCHANGE_TYPE_OUTBOUND'],
+            durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
+            exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
+            type_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
         )
         yield from channel.publish(
-            message,
-            self.app.settings['AMQP_EXCHANGE_OUTBOUND'],
-            self.app.settings['AMQP_ROUTING_KEY_OUTBOUND'],
+            payload=message,
+            exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
+            routing_key=self.app.settings['AMQP_OUTBOUND_ROUTING_KEY'],
         )
 
 
@@ -202,13 +207,16 @@ class AMQP(Extension):
 
         # Send / receive settings
         'AMQP_DISPATCH_METHOD': 'ROUND_ROBIN',
-        'AMQP_EXCHANGE_INBOUND': '',
-        'AMQP_EXCHANGE_TYPE_INBOUND': 'direct',
-        'AMQP_EXCHANGE_OUTBOUND': '',
-        'AMQP_EXCHANGE_TYPE_OUTBOUND': 'direct',
-        'AMQP_QUEUE_INBOUND': '',
-        'AMQP_ROUTING_KEY_INBOUND': '',
-        'AMQP_ROUTING_KEY_OUTBOUND': '',
+        'AMQP_INBOUND_EXCHANGE': '',
+        'AMQP_INBOUND_EXCHANGE_DURABLE': False,
+        'AMQP_INBOUND_EXCHANGE_TYPE': 'direct',
+        'AMQP_INBOUND_QUEUE': '',
+        'AMQP_INBOUND_QUEUE_DURABLE': False,
+        'AMQP_INBOUND_ROUTING_KEY': '',
+        'AMQP_OUTBOUND_EXCHANGE': '',
+        'AMQP_OUTBOUND_EXCHANGE_DURABLE': False,
+        'AMQP_OUTBOUND_EXCHANGE_TYPE': 'direct',
+        'AMQP_OUTBOUND_ROUTING_KEY': '',
     }
 
     def consumer(self):

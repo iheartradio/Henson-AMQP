@@ -15,11 +15,14 @@ class Settings:
     """A container object for test settings."""
 
     AMQP_HOST = os.environ.get('TEST_AMQP_HOST', 'localhost')
-    AMQP_QUEUE_INBOUND = 'test.in'
-    AMQP_EXCHANGE_INBOUND = 'test.in'
-    AMQP_EXCHANGE_OUTBOUND = 'test.in'
-    AMQP_ROUTING_KEY_INBOUND = 'test.in'
-    AMQP_ROUTING_KEY_OUTBOUND = 'test.in'
+    AMQP_INBOUND_QUEUE = 'test.in'
+    AMQP_INBOUND_QUEUE_DURABLE = True
+    AMQP_INBOUND_EXCHANGE = 'test.in'
+    AMQP_INBOUND_EXCHANGE_DURABLE = True
+    AMQP_OUTBOUND_EXCHANGE = 'test.in'
+    AMQP_OUTBOUND_EXCHANGE_DURABLE = True
+    AMQP_INBOUND_ROUTING_KEY = 'test.in'
+    AMQP_OUTBOUND_ROUTING_KEY = 'test.in'
 
 
 @pytest.fixture
