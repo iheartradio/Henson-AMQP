@@ -90,6 +90,7 @@ class Consumer:
             login=self.app.settings['AMQP_USERNAME'],
             password=self.app.settings['AMQP_PASSWORD'],
             virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
+            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
 
@@ -178,6 +179,7 @@ class Producer:
             login=self.app.settings['AMQP_USERNAME'],
             password=self.app.settings['AMQP_PASSWORD'],
             virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
+            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
         channel = yield from self._protocol.channel()
@@ -203,6 +205,7 @@ class AMQP(Extension):
         'AMQP_USERNAME': 'guest',
         'AMQP_PASSWORD': 'guest',
         'AMQP_VIRTUAL_HOST': '/',
+        'AMQP_HEARTBEAT_INTERVAL': 60,
         'AMQP_CONNECTION_KWARGS': {},
 
         # Send / receive settings
