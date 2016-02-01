@@ -233,11 +233,13 @@ class AMQP(Extension):
         return Consumer(self.app)
 
     def producer(self):
-        """Return a new AMQP producer.
+        """Return an AMQP producer, creating it if necessary.
 
         Returns:
             Producer: A new producer object that can be used to write to
                 the AMQP broker and exchange specified by the
                 Application's settings.
         """
-        return Producer(self.app)
+        if not hasattr(self, '_producer'):
+            self._producer = Producer(self.app)
+        return self._producer
