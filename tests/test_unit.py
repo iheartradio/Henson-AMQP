@@ -1,6 +1,7 @@
 """henson_amqp unit tests."""
 
 import asyncio
+from copy import copy
 from unittest import mock
 
 import pytest
@@ -32,3 +33,18 @@ def test_read(test_consumer, test_envelope, test_properties):
     test_consumer._message_queue.put_nowait(message)
     read_message = (yield from test_consumer.read())
     assert read_message == message
+
+
+def test_producer_factory(test_amqp):
+    """Test that ``AMQP.producer`` caches its result."""
+    producer1 = test_amqp.producer()
+    producer2 = test_amqp.producer()
+    assert producer1 is producer2
+
+
+def test_different_producer_factories(test_amqp):
+    """Test that different AMQP instances return different producers."""
+    test_amqp_copy = copy(test_amqp)
+    producer1 = test_amqp.producer()
+    producer2 = test_amqp_copy.producer()
+    assert producer1 is not producer2
