@@ -149,9 +149,23 @@ class Producer:
         self.app = app
         self._transport = None
         self._protocol = None
+        self._channel = None
 
         # Register a teardown callback.
         self.app.teardown(self._teardown)
+
+    @asyncio.coroutine
+    def _connect(self):
+        self._transport, self._protocol = yield from aioamqp.connect(
+            host=self.app.settings['AMQP_HOST'],
+            port=self.app.settings['AMQP_PORT'],
+            login=self.app.settings['AMQP_USERNAME'],
+            password=self.app.settings['AMQP_PASSWORD'],
+            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
+            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
+            **self.app.settings['AMQP_CONNECTION_KWARGS']
+        )
+        self._channel = yield from self._protocol.channel()
 
     @asyncio.coroutine
     def _teardown(self, app):
@@ -173,22 +187,14 @@ class Producer:
         Args:
             message (str): The body of the message to send.
         """
-        self._transport, self._protocol = yield from aioamqp.connect(
-            host=self.app.settings['AMQP_HOST'],
-            port=self.app.settings['AMQP_PORT'],
-            login=self.app.settings['AMQP_USERNAME'],
-            password=self.app.settings['AMQP_PASSWORD'],
-            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
-            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
-            **self.app.settings['AMQP_CONNECTION_KWARGS']
-        )
-        channel = yield from self._protocol.channel()
-        yield from channel.exchange_declare(
+        if not self._channel:
+            yield from self._connect()
+        yield from self._channel.exchange_declare(
             durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
             type_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
         )
-        yield from channel.publish(
+        yield from self._channel.publish(
             payload=message,
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
             routing_key=self.app.settings['AMQP_OUTBOUND_ROUTING_KEY'],
