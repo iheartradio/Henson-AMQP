@@ -83,7 +83,8 @@ class Consumer:
     def _begin_consuming(self):
         """Begin reading messages from the specified AMQP broker."""
         # Create a connection to the broker
-        self._message_queue = asyncio.Queue()
+        self._message_queue = asyncio.Queue(
+            maxsize=self.app.settings['AMQP_PREFETCH_LIMIT'])
         self._transport, self._protocol = yield from aioamqp.connect(
             host=self.app.settings['AMQP_HOST'],
             port=self.app.settings['AMQP_PORT'],
@@ -205,6 +206,9 @@ class AMQP(Extension):
     """An interface to interact with an AMQP broker."""
 
     DEFAULT_SETTINGS = {
+        # General settings
+        'AMQP_PREFETCH_LIMIT': 0,
+
         # Connection settings
         'AMQP_HOST': 'localhost',
         'AMQP_PORT': 5672,
