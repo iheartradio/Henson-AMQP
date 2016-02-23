@@ -14,16 +14,16 @@ Install with pip::
 Quickstart
 ==========
 
-.. code::
+.. code:: python
 
     # settings.py
-    AMQP_QUEUE_INBOUND='incoming'
-    AMQP_EXCHANGE_INBOUND='incoming'
-    AMQP_EXCHANGE_OUTBOUND='outgoing'
-    AMQP_ROUTING_KEY_INBOUND='outgoing'
-    AMQP_ROUTING_KEY_OUTBOUND='outgoing'
+    AMQP_INBOUND_QUEUE = 'incoming'
+    AMQP_INBOUND_EXCHANGE = 'incoming'
+    AMQP_OUTBOUND_EXCHANGE = 'outgoing'
+    AMQP_INBOUND_ROUTING_KEY = 'outgoing'
+    AMQP_OUTBOUND_ROUTING_KEY = 'outgoing'
 
-.. code::
+.. code:: python
 
     # app.py
     from henson import Application
@@ -45,9 +45,11 @@ Quickstart
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    api
+   settings
+   changelog
 
 
 Indices and tables
