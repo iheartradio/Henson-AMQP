@@ -206,9 +206,6 @@ class AMQP(Extension):
     """An interface to interact with an AMQP broker."""
 
     DEFAULT_SETTINGS = {
-        # General settings
-        'AMQP_PREFETCH_LIMIT': 0,
-
         # Connection settings
         'AMQP_HOST': 'localhost',
         'AMQP_PORT': 5672,
@@ -230,6 +227,7 @@ class AMQP(Extension):
         'AMQP_OUTBOUND_EXCHANGE_DURABLE': False,
         'AMQP_OUTBOUND_EXCHANGE_TYPE': 'direct',
         'AMQP_OUTBOUND_ROUTING_KEY': '',
+        'AMQP_PREFETCH_LIMIT': 0,
     }
 
     def consumer(self):
