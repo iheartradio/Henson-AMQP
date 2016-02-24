@@ -47,8 +47,8 @@ Contents:
 .. toctree::
    :maxdepth: 1
 
-   api
    settings
+   api
    changelog
 
 

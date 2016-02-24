@@ -27,3 +27,9 @@ Producer
 
 .. autoclass:: henson_amqp.Producer
    :members:
+
+DeliveryMode
+============
+
+.. autoclass:: henson_amqp.DeliveryMode
+   :members:
