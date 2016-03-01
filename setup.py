@@ -5,8 +5,8 @@ setup(
     version='0.1.0',
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        'Henson>=0.5.0',
-        'aioamqp>=0.5.1',
+        'Henson>=1.0.0,<2.0.0',
+        'aioamqp>=0.5.1,<1.0.0',
     ],
     tests_require=[
         'tox',
