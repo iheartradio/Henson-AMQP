@@ -2,6 +2,7 @@
 
 import asyncio
 from collections import namedtuple
+from enum import IntEnum
 from pkg_resources import get_distribution
 
 import aioamqp
@@ -188,6 +189,9 @@ class Producer:
         Args:
             message (str): The body of the message to send.
         """
+        properties = {
+            'delivery_mode': self.app.settings['AMQP_DELIVERY_MODE'].value,
+        }
         if not self._channel:
             yield from self._connect()
         yield from self._channel.exchange_declare(
@@ -199,7 +203,17 @@ class Producer:
             payload=message,
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
             routing_key=self.app.settings['AMQP_OUTBOUND_ROUTING_KEY'],
+            properties=properties,
         )
+
+
+class DeliveryMode(IntEnum):
+    """AMQP message delivery modes."""
+
+    NONPERSISTENT = 1
+    """Mark messages as non-persistent before sending to the AMQP instance."""
+    PERSISTENT = 2
+    """Mark messages as persistent before sending to the AMQP instance."""
 
 
 class AMQP(Extension):
@@ -215,7 +229,7 @@ class AMQP(Extension):
         'AMQP_HEARTBEAT_INTERVAL': 60,
         'AMQP_CONNECTION_KWARGS': {},
 
-        # Send / receive settings
+        # Consumer settings
         'AMQP_DISPATCH_METHOD': 'ROUND_ROBIN',
         'AMQP_INBOUND_EXCHANGE': '',
         'AMQP_INBOUND_EXCHANGE_DURABLE': False,
@@ -223,11 +237,14 @@ class AMQP(Extension):
         'AMQP_INBOUND_QUEUE': '',
         'AMQP_INBOUND_QUEUE_DURABLE': False,
         'AMQP_INBOUND_ROUTING_KEY': '',
+        'AMQP_PREFETCH_LIMIT': 0,
+
+        # Producer settings
         'AMQP_OUTBOUND_EXCHANGE': '',
         'AMQP_OUTBOUND_EXCHANGE_DURABLE': False,
         'AMQP_OUTBOUND_EXCHANGE_TYPE': 'direct',
         'AMQP_OUTBOUND_ROUTING_KEY': '',
-        'AMQP_PREFETCH_LIMIT': 0,
+        'AMQP_DELIVERY_MODE': DeliveryMode.NONPERSISTENT,
     }
 
     def consumer(self):

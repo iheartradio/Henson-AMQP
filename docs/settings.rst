@@ -63,25 +63,31 @@ Consumer Settings
 Producer Settings
 =================
 
-+------------------------------------+----------------------------------------+
-| ``AMQP_OUTBOUND_EXCHANGE``         | The name of the exchange used by the   |
-|                                    | producer to send messages. Defaults to |
-|                                    | ``''``.                                |
-+------------------------------------+----------------------------------------+
-| ``AMQP_OUTBOUND_EXCHANGE_DURABLE`` | The durability setting of the outbound |
-|                                    | exchange. Defaults to ``False``.       |
-+------------------------------------+----------------------------------------+
-| ``AMQP_OUTBOUND_EXCHANGE_TYPE``    | The type of the outbound exchange.     |
-|                                    | Defaults to ``'direct'``.              |
-+------------------------------------+----------------------------------------+
-| ``AMQP_OUTBOUND_ROUTING_KEY``      | The routing key used when sending      |
-|                                    | messages to the outbound exchange.     |
-|                                    | Defaults to ``''``.                    |
-+------------------------------------+----------------------------------------+
-| ``AMQP_PREFETCH_LIMIT``            | The maximum number of messages to keep |
-|                                    | in the internal queue waiting to be    |
-|                                    | processed. If set to ``0``, the        |
-|                                    | consumer will fetch all available      |
-|                                    | messages from the AMQP queue. Defaults |
-|                                    | to ``0``.                              |
-+------------------------------------+----------------------------------------+
++------------------------------------+------------------------------------------------+
+| ``AMQP_OUTBOUND_EXCHANGE``         | The name of the exchange used by the           |
+|                                    | producer to send messages. Defaults to         |
+|                                    | ``''``.                                        |
++------------------------------------+------------------------------------------------+
+| ``AMQP_OUTBOUND_EXCHANGE_DURABLE`` | The durability setting of the outbound         |
+|                                    | exchange. Defaults to ``False``.               |
++------------------------------------+------------------------------------------------+
+| ``AMQP_OUTBOUND_EXCHANGE_TYPE``    | The type of the outbound exchange.             |
+|                                    | Defaults to ``'direct'``.                      |
++------------------------------------+------------------------------------------------+
+| ``AMQP_OUTBOUND_ROUTING_KEY``      | The routing key used when sending              |
+|                                    | messages to the outbound exchange.             |
+|                                    | Defaults to ``''``.                            |
++------------------------------------+------------------------------------------------+
+| ``AMQP_PREFETCH_LIMIT``            | The maximum number of messages to keep         |
+|                                    | in the internal queue waiting to be            |
+|                                    | processed. If set to ``0``, the                |
+|                                    | consumer will fetch all available              |
+|                                    | messages from the AMQP queue. Defaults         |
+|                                    | to ``0``.                                      |
++------------------------------------+------------------------------------------------+
+| ``AMQP_DELIVERY_MODE``             | The mode used when sending messages.           |
+|                                    | By default, messages are                       |
+|                                    | non-persistent.                                |
+|                                    | Defaults to                                    |
+|                                    | :attr:`henson_amqp.DeliveryMode.NONPERSISTENT` |
++------------------------------------+------------------------------------------------+
