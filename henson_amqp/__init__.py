@@ -28,7 +28,68 @@ else:
 Message = namedtuple('Message', ('body', 'envelope', 'properties'))
 
 
-class Consumer:
+class AMQPConnectionMixin:
+    """Base class for shared AMQP connection logic.
+
+    Args:
+        app (henson.base.Application): An application whose settings
+            contain AMQP configuration parameters.
+    """
+
+    def __init__(self, app):
+        """Initialize the extension."""
+        # Store a reference to the app and declare some attributes that
+        # will be set later by async calls.
+        self.app = app
+        self._transport = None
+        self._protocol = None
+        self._channel = None
+
+        # Register the application teardown callback to clean up
+        # connections.
+        self.app.teardown(self._teardown)
+
+    @asyncio.coroutine
+    def _connect(self):
+        self._transport, self._protocol = yield from aioamqp.connect(
+            host=self.app.settings['AMQP_HOST'],
+            port=self.app.settings['AMQP_PORT'],
+            login=self.app.settings['AMQP_USERNAME'],
+            password=self.app.settings['AMQP_PASSWORD'],
+            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
+            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
+            on_error=self._connection_error_callback,
+            **self.app.settings['AMQP_CONNECTION_KWARGS']
+        )
+        self._channel = yield from self._protocol.channel()
+
+    @asyncio.coroutine
+    def _connection_error_callback(self, exception):
+        """Handle aioamqp connection errors.
+
+        Args:
+            exception (Exception): The exception resulting from the
+                connection being closed.
+        """
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    def _teardown(self, app):
+        """Cleanup the protocol and transport before shutting down.
+
+        Args:
+            app (henson.base.Application): The application to which this
+                Consumer belongs.
+        """
+        if self._channel is not None:
+            yield from self._channel.close()
+        if self._protocol is not None:
+            yield from self._protocol.close()
+        if self._transport is not None:
+            self._transport.close()
+
+
+class Consumer(AMQPConnectionMixin):
     """A consumer of an AMQP queue.
 
     Args:
@@ -38,18 +99,13 @@ class Consumer:
 
     def __init__(self, app):
         """Initialize the consumer."""
-        # Store a reference to the app and declare some attributes that
-        # will be set later by async calls.
-        self.app = app
-        self._message_queue = None
-        self._transport = None
-        self._protocol = None
-        self._channel = None
+        super().__init__(app)
+        self._message_queue = asyncio.Queue(
+            maxsize=self.app.settings['AMQP_PREFETCH_LIMIT'])
 
-        # Register the message acknowledgement and application teardown
-        # callbacks with the application.
+        # Register the message acknowledgement callback with the
+        # application.
         self.app.message_acknowledgement(self._acknowledge_message)
-        self.app.teardown(self._teardown)
 
     @asyncio.coroutine
     def _acknowledge_message(self, app, message):
@@ -62,19 +118,6 @@ class Consumer:
                 the application.
         """
         yield from self._channel.basic_client_ack(message.envelope.delivery_tag)  # NOQA: line length
-
-    @asyncio.coroutine
-    def _teardown(self, app):
-        """Cleanup the protocol and transport before shutting down.
-
-        Args:
-            app (henson.base.Application): The application to which this
-                Consumer belongs.
-        """
-        if self._protocol is not None:
-            yield from self._protocol.close()
-        if self._transport is not None:
-            self._transport.close()
 
     @asyncio.coroutine
     def _enqueue_message(self, channel, body, envelope, properties):
@@ -94,22 +137,6 @@ class Consumer:
     @asyncio.coroutine
     def _begin_consuming(self):
         """Begin reading messages from the specified AMQP broker."""
-        # Create a connection to the broker
-        self._message_queue = asyncio.Queue(
-            maxsize=self.app.settings['AMQP_PREFETCH_LIMIT'])
-        self._transport, self._protocol = yield from aioamqp.connect(
-            host=self.app.settings['AMQP_HOST'],
-            port=self.app.settings['AMQP_PORT'],
-            login=self.app.settings['AMQP_USERNAME'],
-            password=self.app.settings['AMQP_PASSWORD'],
-            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
-            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
-            **self.app.settings['AMQP_CONNECTION_KWARGS']
-        )
-
-        # Declare the queue and exchange that we expect to read from
-        self._channel = yield from self._protocol.channel()
-
         yield from self._channel.queue_declare(
             queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
             durable=self.app.settings['AMQP_INBOUND_QUEUE_DURABLE'],
@@ -134,6 +161,35 @@ class Consumer:
         )
 
     @asyncio.coroutine
+    def _connection_error_callback(self, exception):
+        """Handle aioamqp connection errors.
+
+        Args:
+            exception (Exception): The exception resulting from the
+                connection being closed.
+        """
+        # Try to reconnect.
+        for _ in range(self.app.settings['AMQP_RECONNECT_LIMIT']):
+            # If reconnecting is successful, begin consuming again and
+            # resume normal operation.
+            try:
+                yield from self._teardown(self.app)
+                yield from self._connect()
+                yield from self._begin_consuming()
+                break
+
+            # aioamqp raises an OSError when it is unable to connect. If
+            # this happens during our retry period, wait the configured
+            # amount of time and try again.
+            except OSError:
+                yield from asyncio.sleep(
+                    self.app.settings['AMQP_RECONNECT_DELAY'])
+        else:
+            # Finally, if reconnecting fails, put the original exception
+            # on the queue.
+            yield from self._message_queue.put(exception)
+
+    @asyncio.coroutine
     def read(self):
         """Read a single message from the message queue.
 
@@ -142,13 +198,31 @@ class Consumer:
 
         Returns:
             Message: The next available message.
+
+        Raises:
+            aioamqp.exceptions.AioamqpException: The exception raised on
+                connection close.
         """
-        if self._message_queue is None:
+        # On the first call to read, connect to the AMQP server and
+        # begin consuming messages.
+        if self._channel is None:
+            yield from self._connect()
             yield from self._begin_consuming()
-        return (yield from self._message_queue.get())
+
+        # Read the next result from the internal message queue.
+        result = yield from self._message_queue.get()
+
+        # If the result is an exception, the connection was closed, and
+        # the consumer was unable to recover. Raise the original
+        # exception.
+        if isinstance(result, Exception):
+            raise result
+
+        # Finally, return the result if it is a valid message.
+        return result
 
 
-class Producer:
+class Producer(AMQPConnectionMixin):
     """A producer of an AMQP queue.
 
     Args:
@@ -156,42 +230,29 @@ class Producer:
             producer produces.
     """
 
-    def __init__(self, app):
-        """Initialize the producer."""
-        # Store a reference to the application for later use.
-        self.app = app
-        self._transport = None
-        self._protocol = None
-        self._channel = None
-
-        # Register a teardown callback.
-        self.app.teardown(self._teardown)
-
     @asyncio.coroutine
-    def _connect(self):
-        self._transport, self._protocol = yield from aioamqp.connect(
-            host=self.app.settings['AMQP_HOST'],
-            port=self.app.settings['AMQP_PORT'],
-            login=self.app.settings['AMQP_USERNAME'],
-            password=self.app.settings['AMQP_PASSWORD'],
-            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
-            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
-            **self.app.settings['AMQP_CONNECTION_KWARGS']
-        )
-        self._channel = yield from self._protocol.channel()
-
-    @asyncio.coroutine
-    def _teardown(self, app):
-        """Cleanup the protocol and transport before shutting down.
+    def _connection_error_callback(self, exception):
+        """Handle aioamqp connection errors.
 
         Args:
-            app (henson.base.Application): The application to which this
-                Consumer belongs.
+            exception (Exception): The exception resulting from the
+                connection being closed.
         """
-        if self._protocol is not None:
-            yield from self._protocol.close()
-        if self._transport is not None:
-            self._transport.close()
+        # Try to reconnect.
+        for _ in range(self.app.settings['AMQP_CONNECTION_RETRY_LIMIT']):
+            # If reconnecting is successful, begin consuming again and
+            # resume normal operation.
+            try:
+                yield from self._connect()
+                yield from self._begin_consuming()
+                break
+
+            # aioamqp raises an OSError when it is unable to connect. If
+            # this happens during our retry period, wait the configured
+            # amount of time and try again.
+            except OSError:
+                yield from asyncio.sleep(
+                    self.app.settings['AMQP_CONNECTION_RECONNECT_DELAY'])
 
     @asyncio.coroutine
     def send(self, message):
@@ -239,6 +300,8 @@ class AMQP(Extension):
         'AMQP_VIRTUAL_HOST': '/',
         'AMQP_HEARTBEAT_INTERVAL': 60,
         'AMQP_CONNECTION_KWARGS': {},
+        'AMQP_RECONNECT_LIMIT': 3,
+        'AMQP_RECONNECT_DELAY': 10,
 
         # Consumer settings
         'AMQP_DISPATCH_METHOD': 'ROUND_ROBIN',

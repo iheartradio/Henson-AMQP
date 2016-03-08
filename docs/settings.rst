@@ -5,30 +5,38 @@ Settings
 Connection Settings
 ===================
 
-+------------------------------------+----------------------------------------+
-| ``AMQP_HOST``                      | The hostname or IP address of the AMQP |
-|                                    | server to connect to. Defaults to      |
-|                                    | ``'localhost'``.                       |
-+------------------------------------+----------------------------------------+
-| ``AMQP_PORT``                      | The port of the AMQP server to connect |
-|                                    | to. Defaults to ``5672``.              |
-+------------------------------------+----------------------------------------+
-| ``AMQP_USERNAME``                  | The username to authenticate with.     |
-|                                    | Defaults to   ``'guest'``.             |
-+------------------------------------+----------------------------------------+
-| ``AMQP_PASSWORD``                  | The password to authenticate with.     |
-|                                    | Defaults to ``'guest'``.               |
-+------------------------------------+----------------------------------------+
-| ``AMQP_VIRTUAL_HOST``              | The virtual host to use. Defaults to   |
-|                                    | ``'/'``.                               |
-+------------------------------------+----------------------------------------+
-| ``AMQP_HEARTBEAT_INTERVAL``        | The heartbeat interval to use for      |
-|                                    | connections. Defaults to ``60``.       |
-+------------------------------------+----------------------------------------+
-| ``AMQP_CONNECTION_KWARGS``         | Additional arguments to pass to        |
-|                                    | :func:`aioamqp.connect`. Defaults to   |
-|                                    | ``{}``.                                |
-+------------------------------------+----------------------------------------+
++-----------------------------+----------------------------------------+
+| ``AMQP_HOST``               | The hostname or IP address of the AMQP |
+|                             | server to connect to. Defaults to      |
+|                             | ``'localhost'``.                       |
++-----------------------------+----------------------------------------+
+| ``AMQP_PORT``               | The port of the AMQP server to connect |
+|                             | to. Defaults to ``5672``.              |
++-----------------------------+----------------------------------------+
+| ``AMQP_USERNAME``           | The username to authenticate with.     |
+|                             | Defaults to   ``'guest'``.             |
++-----------------------------+----------------------------------------+
+| ``AMQP_PASSWORD``           | The password to authenticate with.     |
+|                             | Defaults to ``'guest'``.               |
++-----------------------------+----------------------------------------+
+| ``AMQP_VIRTUAL_HOST``       | The virtual host to use. Defaults to   |
+|                             | ``'/'``.                               |
++-----------------------------+----------------------------------------+
+| ``AMQP_HEARTBEAT_INTERVAL`` | The heartbeat interval to use for      |
+|                             | connections. Defaults to ``60``.       |
++-----------------------------+----------------------------------------+
+| ``AMQP_CONNECTION_KWARGS``  | Additional arguments to pass to        |
+|                             | :func:`aioamqp.connect`. Defaults to   |
+|                             | ``{}``.                                |
++-----------------------------+----------------------------------------+
+| ``AMQP_RECONNECT_LIMIT``    | The number of times to retry the       |
+|                             | connection to the AMQP server if it is |
+|                             | closed unexpectedly. Defaults to       |
+|                             | ``0``.                                 |
++-----------------------------+----------------------------------------+
+| ``AMQP_RECONNECT_DELAY``    | The number of seconds to wait between  |
+|                             | reconnect attempts. Defaults to ``0``. |
++-----------------------------+----------------------------------------+
 
 Consumer Settings
 =================
