@@ -49,7 +49,7 @@ Contents:
 
    settings
    api
-   changelog
+   changes
 
 
 Indices and tables
