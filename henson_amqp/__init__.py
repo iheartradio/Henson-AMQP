@@ -92,6 +92,16 @@ class Consumer:
         yield from self._message_queue.put(message)
 
     @asyncio.coroutine
+    def _connection_error_callback(self, exception):
+        """Handle aioamqp connection errors.
+
+        Args:
+            exception (Exception): The exception resulting from the
+                connection being closed.
+        """
+        yield from self._message_queue.put(exception)
+
+    @asyncio.coroutine
     def _begin_consuming(self):
         """Begin reading messages from the specified AMQP broker."""
         # Create a connection to the broker
@@ -104,6 +114,7 @@ class Consumer:
             password=self.app.settings['AMQP_PASSWORD'],
             virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
             heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
+            on_error=self._connection_error_callback,
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
 
@@ -142,10 +153,27 @@ class Consumer:
 
         Returns:
             Message: The next available message.
+
+        Raises:
+            aioamqp.exceptions.AioamqpException: The exception raised on
+                connection close.
         """
+        # On the first call to read, connect to the AMQP server and
+        # begin consuming messages.
         if self._message_queue is None:
             yield from self._begin_consuming()
-        return (yield from self._message_queue.get())
+
+        # Read the next result from the internal message queue.
+        result = yield from self._message_queue.get()
+
+        # If the result is an exception, the connection was closed, and
+        # the consumer was unable to recover. Raise the original
+        # exception.
+        if isinstance(result, Exception):
+            raise result
+
+        # Finally, return the result if it is a valid message.
+        return result
 
 
 class Producer:
