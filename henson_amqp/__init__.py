@@ -3,6 +3,7 @@
 import asyncio
 from collections import namedtuple
 from enum import IntEnum
+import json
 import pkg_resources
 import os
 
@@ -174,6 +175,29 @@ class Consumer:
 
         # Finally, return the result if it is a valid message.
         return result
+
+    @asyncio.coroutine
+    def retry(self, app, message):
+        """Requeue a message to be processed again.
+
+        This coroutine is meant for use with the
+        :class:`henson.contrib.retry.Retry` extension.
+
+        Args:
+            app (henson.base.Application): The application processing
+                the message.
+            message (dict): A copy of the message read from the AMQP
+                server.
+
+        .. note:: This function assumes that messages are JSON
+            serializeable. If they are not, a custom function may be
+            used in its place.
+        """
+        yield from self._channel.publish(
+            payload=json.dumps(message).encode('utf-8'),
+            exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
+            routing_key=self.app.settings['AMQP_INBOUND_ROUTING_KEY'],
+        )
 
 
 class Producer:

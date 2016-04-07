@@ -2,6 +2,7 @@
 
 import asyncio
 from copy import copy
+import json
 from unittest import mock
 
 import pytest
@@ -26,13 +27,26 @@ def test_enqueue_message(test_consumer, test_envelope, test_properties):
 def test_read(test_consumer, test_envelope, test_properties):
     """Test that reading returns a message from the queue."""
     # Mock away the channel for unit tests
-    test_consumer.channel = mock.MagicMock()
+    test_consumer._channel = mock.MagicMock()
     test_consumer._message_queue = asyncio.Queue()
     # Get a consumer and add an mock message to its queue
     message = Message(b'foo', test_envelope, test_properties)
     test_consumer._message_queue.put_nowait(message)
     read_message = (yield from test_consumer.read())
     assert read_message == message
+
+
+@pytest.mark.asyncio
+def test_retry(test_consumer):
+    """Test that the included retry function works."""
+    test_consumer._channel = mock.MagicMock()
+    message = {"spam": "eggs"}
+    yield from test_consumer.retry(test_consumer.app, message)
+    test_consumer._channel.publish.assert_called_with(
+        payload=json.dumps(message).encode('utf-8'),
+        exchange_name=test_consumer.app.settings['AMQP_INBOUND_EXCHANGE'],
+        routing_key=test_consumer.app.settings['AMQP_INBOUND_ROUTING_KEY'],
+    )
 
 
 def test_producer_factory(test_amqp):

@@ -7,6 +7,8 @@ Version 0.3.0
 
 Release TBD
 
+- Add support for ``Retry``
+
 
 Version 0.2.0
 =============
