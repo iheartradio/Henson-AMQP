@@ -38,6 +38,11 @@ Quickstart
     amqp = AMQP(app)
     app.consumer = amqp.consumer()
 
+    # Enable optional Retry support
+    from henson.contrib.retry import Retry
+    app.settings['RETRY_CALLBACK'] = app.consumer.retry
+    Retry(app)
+
 .. code::
 
     $ henson run app
