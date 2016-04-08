@@ -293,6 +293,7 @@ class AMQP(Extension):
         'AMQP_CONNECTION_KWARGS': {},
 
         # Consumer settings
+        'REGISTER_CONSUMER': False,
         'AMQP_DISPATCH_METHOD': 'ROUND_ROBIN',
         'AMQP_INBOUND_EXCHANGE': '',
         'AMQP_INBOUND_EXCHANGE_DURABLE': False,
@@ -309,6 +310,20 @@ class AMQP(Extension):
         'AMQP_OUTBOUND_ROUTING_KEY': '',
         'AMQP_DELIVERY_MODE': DeliveryMode.NONPERSISTENT,
     }
+
+    def init_app(self, app):
+        """Initialize the application.
+
+        If the application's ``REGISTER_CONSUMER`` setting is truthy,
+        create a consumer and attach it to the application.
+
+        Args:
+            app (henson.base.Application): The application instance that
+                will be initialized.
+        """
+        super().init_app(app)
+        if app.settings['REGISTER_CONSUMER']:
+            app.consumer = self.consumer()
 
     def consumer(self):
         """Return a new AMQP consumer.

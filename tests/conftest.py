@@ -26,10 +26,15 @@ class Settings:
 
 
 @pytest.fixture
-def test_amqp():
+def test_app():
+    """Return a test application."""
+    return Application('testing', Settings)
+
+
+@pytest.fixture
+def test_amqp(test_app):
     """Return an extension bound to the test app."""
-    app = Application('testing', Settings)
-    return AMQP(app)
+    return AMQP(test_app)
 
 
 @pytest.fixture

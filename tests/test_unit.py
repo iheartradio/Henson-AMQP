@@ -7,7 +7,20 @@ from unittest import mock
 
 import pytest
 
-from henson_amqp import Message
+from henson_amqp import AMQP, Consumer, Message
+
+
+def test_register_consumer(test_app):
+    """Test that consumer registration behaves correctly."""
+    test_app.settings['REGISTER_CONSUMER'] = True
+    AMQP(test_app)
+    assert isinstance(test_app.consumer, Consumer)
+
+
+def test_no_register_consumer(test_app):
+    """Test that consumers are not registered if not explicitly set."""
+    AMQP(test_app)
+    assert not test_app.consumer
 
 
 @pytest.mark.asyncio
