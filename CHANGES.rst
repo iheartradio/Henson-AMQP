@@ -8,6 +8,7 @@ Version 0.3.0
 Release TBD
 
 - Add support for ``Retry``
+- Add ``REGISTER_CONSUMER`` setting
 
 
 Version 0.2.0

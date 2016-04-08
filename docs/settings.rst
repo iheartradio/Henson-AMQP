@@ -33,32 +33,36 @@ Connection Settings
 Consumer Settings
 =================
 
-+------------------------------------+----------------------------------------+
-| ``AMQP_INBOUND_EXCHANGE``          | The name of the exchange that the      |
-|                                    | consumer should read from. Defaults to |
-|                                    | ``''`` (the AMQP default exchange).    |
-+------------------------------------+----------------------------------------+
-| ``AMQP_INBOUND_EXCHANGE_DURABLE``  | The durability setting of the exchange |
-|                                    | that the consumer reads from. Defaults |
-|                                    | to ``False``.                          |
-+------------------------------------+----------------------------------------+
-| ``AMQP_INBOUND_EXCHANGE_TYPE``     | The type of the inbound exchange.      |
-|                                    | Defaults to ``'direct'``.              |
-+------------------------------------+----------------------------------------+
-| ``AMQP_INBOUND_QUEUE``             | The name of the queue that the         |
-|                                    | consumer should read from. Defaults to |
-|                                    | ``''`` (the AMQP default queue).       |
-+------------------------------------+----------------------------------------+
-| ``AMQP_INBOUND_QUEUE_DURABLE``     | The durability setting of the queue    |
-|                                    | the consumer reads from. Defaults to   |
-|                                    | ``False``.                             |
-+------------------------------------+----------------------------------------+
-| ``AMQP_INBOUND_ROUTING_KEY``       | The routing key used to bind the       |
-|                                    | inbound exchange and queue. Defaults   |
-|                                    | to ``''``.                             |
-+------------------------------------+----------------------------------------+
-| ``AMQP_DISPATCH_METHOD``           | Reserved for future use.               |
-+------------------------------------+----------------------------------------+
++-----------------------------------+-----------------------------------------+
+| ``REGISTER_CONSUMER``             | If ``True``, a consumer will be         |
+|                                   | automatically created and assigned to   |
+|                                   | the application. Defaults to ``False``. |
++-----------------------------------+-----------------------------------------+
+| ``AMQP_INBOUND_EXCHANGE``         | The name of the exchange that the       |
+|                                   | consumer should read from. Defaults to  |
+|                                   | ``''`` (the AMQP default exchange).     |
++-----------------------------------+-----------------------------------------+
+| ``AMQP_INBOUND_EXCHANGE_DURABLE`` | The durability setting of the exchange  |
+|                                   | that the consumer reads from. Defaults  |
+|                                   | to ``False``.                           |
++-----------------------------------+-----------------------------------------+
+| ``AMQP_INBOUND_EXCHANGE_TYPE``    | The type of the inbound exchange.       |
+|                                   | Defaults to ``'direct'``.               |
++-----------------------------------+-----------------------------------------+
+| ``AMQP_INBOUND_QUEUE``            | The name of the queue that the          |
+|                                   | consumer should read from. Defaults to  |
+|                                   | ``''`` (the AMQP default queue).        |
++-----------------------------------+-----------------------------------------+
+| ``AMQP_INBOUND_QUEUE_DURABLE``    | The durability setting of the queue     |
+|                                   | the consumer reads from. Defaults to    |
+|                                   | ``False``.                              |
++-----------------------------------+-----------------------------------------+
+| ``AMQP_INBOUND_ROUTING_KEY``      | The routing key used to bind the        |
+|                                   | inbound exchange and queue. Defaults    |
+|                                   | to ``''``.                              |
++-----------------------------------+-----------------------------------------+
+| ``AMQP_DISPATCH_METHOD``          | Reserved for future use.                |
++-----------------------------------+-----------------------------------------+
 
 Producer Settings
 =================
