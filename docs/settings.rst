@@ -78,9 +78,10 @@ Producer Settings
 | ``AMQP_OUTBOUND_EXCHANGE_TYPE``    | The type of the outbound exchange.             |
 |                                    | Defaults to ``'direct'``.                      |
 +------------------------------------+------------------------------------------------+
-| ``AMQP_OUTBOUND_ROUTING_KEY``      | The routing key used when sending              |
-|                                    | messages to the outbound exchange.             |
-|                                    | Defaults to ``''``.                            |
+| ``AMQP_OUTBOUND_ROUTING_KEY``      | The default routing key used when              |
+|                                    | sending messages to the outbound               |
+|                                    | exchange if the ``routing_key`` argument       |
+|                                    | is not provided. Defaults to ``''``.           |
 +------------------------------------+------------------------------------------------+
 | ``AMQP_PREFETCH_LIMIT``            | The maximum number of messages to keep         |
 |                                    | in the internal queue waiting to be            |

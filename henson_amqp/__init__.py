@@ -246,17 +246,24 @@ class Producer:
             self._transport.close()
 
     @asyncio.coroutine
-    def send(self, message):
+    def send(self, message, *, routing_key=None):
         """Send a message to the configured AMQP broker and exchange.
 
         Args:
             message (str): The body of the message to send.
+            routing_key (str): The routing key that should be used to
+                send the message. If set to ``None``, the
+                ``AMQP_OUTBOUND_ROUTING_KEY`` application setting will
+                be used. Defaults to ``None``.
         """
         properties = {
             'delivery_mode': self.app.settings['AMQP_DELIVERY_MODE'].value,
         }
         if not self._channel:
             yield from self._connect()
+        if routing_key is None:
+            routing_key = self.app.settings['AMQP_OUTBOUND_ROUTING_KEY']
+
         yield from self._channel.exchange_declare(
             durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
@@ -265,7 +272,7 @@ class Producer:
         yield from self._channel.publish(
             payload=message,
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
-            routing_key=self.app.settings['AMQP_OUTBOUND_ROUTING_KEY'],
+            routing_key=routing_key,
             properties=properties,
         )
 
