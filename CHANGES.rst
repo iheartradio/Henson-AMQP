@@ -5,7 +5,7 @@ Changelog
 Version 0.4.0
 =============
 
-Release TBD
+Released 2016-04-27
 
 - Allow callers of ``Producer.send`` to specify a routing key
 
