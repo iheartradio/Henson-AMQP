@@ -62,6 +62,37 @@ def test_retry(test_consumer):
     )
 
 
+@pytest.mark.asyncio
+def test_produce_routing_key(test_producer):
+    """Test that providing a routing key when sending works."""
+    test_producer._channel = mock.MagicMock()
+    message = 'spam and eggs'
+    routing_key = 'parrot'
+
+    yield from test_producer.send(message, routing_key=routing_key)
+    test_producer._channel.publish.assert_called_with(
+        payload=message,
+        routing_key=routing_key,
+        exchange_name=mock.ANY,
+        properties=mock.ANY,
+    )
+
+
+@pytest.mark.asyncio
+def test_produce_no_routing_key(test_producer):
+    """Test that a default routing key is used when none is provided."""
+    test_producer._channel = mock.MagicMock()
+    message = 'spam and eggs'
+    yield from test_producer.send(message)
+
+    test_producer._channel.publish.assert_called_with(
+        payload=message,
+        routing_key=test_producer.app.settings['AMQP_OUTBOUND_ROUTING_KEY'],
+        exchange_name=mock.ANY,
+        properties=mock.ANY,
+    )
+
+
 def test_producer_factory(test_amqp):
     """Test that ``AMQP.producer`` caches its result."""
     producer1 = test_amqp.producer()

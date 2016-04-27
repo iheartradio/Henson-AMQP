@@ -7,6 +7,8 @@ Version 0.4.0
 
 Release TBD
 
+- Allow callers of ``Producer.send`` to specify a routing key
+
 
 Version 0.3.0
 =============
