@@ -5,7 +5,9 @@ Changelog
 Version 0.5.0
 =============
 
-Release TBD
+Released 2016-06-24
+
+- Support passing ``arguments`` to inbound and outbound exchange declaration
 
 
 Version 0.4.0
