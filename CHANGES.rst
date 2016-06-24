@@ -2,6 +2,12 @@
 Changelog
 =========
 
+Version 0.6.0
+=============
+
+Release TBD
+
+
 Version 0.5.0
 =============
 
