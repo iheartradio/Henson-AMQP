@@ -128,6 +128,7 @@ class Consumer:
         )
         if self.app.settings['AMQP_INBOUND_EXCHANGE']:
             yield from self._channel.exchange_declare(
+                arguments=self.app.settings['AMQP_INBOUND_EXCHANGE_KWARGS'],
                 durable=self.app.settings['AMQP_INBOUND_EXCHANGE_DURABLE'],
                 exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
                 type_name=self.app.settings['AMQP_INBOUND_EXCHANGE_TYPE'],
@@ -265,6 +266,7 @@ class Producer:
             routing_key = self.app.settings['AMQP_OUTBOUND_ROUTING_KEY']
 
         yield from self._channel.exchange_declare(
+            arguments=self.app.settings['AMQP_OUTBOUND_EXCHANGE_KWARGS'],
             durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
             type_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
@@ -305,6 +307,7 @@ class AMQP(Extension):
         'AMQP_INBOUND_EXCHANGE': '',
         'AMQP_INBOUND_EXCHANGE_DURABLE': False,
         'AMQP_INBOUND_EXCHANGE_TYPE': 'direct',
+        'AMQP_INBOUND_EXCHANGE_KWARGS': {},
         'AMQP_INBOUND_QUEUE': '',
         'AMQP_INBOUND_QUEUE_DURABLE': False,
         'AMQP_INBOUND_ROUTING_KEY': '',
@@ -314,6 +317,7 @@ class AMQP(Extension):
         'AMQP_OUTBOUND_EXCHANGE': '',
         'AMQP_OUTBOUND_EXCHANGE_DURABLE': False,
         'AMQP_OUTBOUND_EXCHANGE_TYPE': 'direct',
+        'AMQP_OUTBOUND_EXCHANGE_KWARGS': {},
         'AMQP_OUTBOUND_ROUTING_KEY': '',
         'AMQP_DELIVERY_MODE': DeliveryMode.NONPERSISTENT,
     }
