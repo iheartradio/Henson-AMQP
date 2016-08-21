@@ -8,7 +8,7 @@ Henson-AMQP |build status|
 
 A library for interacting with AMQP with a Henson application.
 
-* `Documentation <https://henson-amqp.rtfd.org>`_
-* `Installation <https://henson-amqp.readthedocs.org/en/latest/#installation>`_
-* `Changelog <https://henson-amqp.readthedocs.org/en/latest/changes.html>`_
+* `Documentation <https://henson-amqp.readthedocs.io>`_
+* `Installation <https://henson-amqp.readthedocs.io/en/latest/#installation>`_
+* `Changelog <https://henson-amqp.readthedocs.io/en/latest/changes.html>`_
 * `Source <https://github.com/iheartradio/Henson-AMQP>`_

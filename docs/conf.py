@@ -295,5 +295,5 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.5', None),
-    'amqp': ('http://aioamqp.readthedocs.org/en/latest/', None),
+    'amqp': ('https://aioamqp.readthedocs.io/en/latest/', None),
 }

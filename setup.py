@@ -24,7 +24,7 @@ setup(
     version='0.6.0',
     author='Andy Dirnberger, Jon Banafato, and others',
     author_email='henson@iheart.com',
-    url='https://henson-amqp.rtfd.org',
+    url='https://henson-amqp.readthedocs.io',
     description='A library for interacting with AMQP with a Henson application.',
     long_description=read('README.rst'),
     license='Apache License, Version 2.0',
