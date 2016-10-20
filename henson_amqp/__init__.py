@@ -234,6 +234,16 @@ class Producer:
         self._channel = yield from self._protocol.channel()
 
     @asyncio.coroutine
+    def _declare_exchange(self):
+        """Declare the configured AMQP exchange."""
+        yield from self._channel.exchange_declare(
+            arguments=self.app.settings['AMQP_OUTBOUND_EXCHANGE_KWARGS'],
+            durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
+            exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
+            type_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
+        )
+
+    @asyncio.coroutine
     def _teardown(self, app):
         """Cleanup the protocol and transport before shutting down.
 
@@ -262,15 +272,10 @@ class Producer:
         }
         if not self._channel:
             yield from self._connect()
+            yield from self._declare_exchange()
+
         if routing_key is None:
             routing_key = self.app.settings['AMQP_OUTBOUND_ROUTING_KEY']
-
-        yield from self._channel.exchange_declare(
-            arguments=self.app.settings['AMQP_OUTBOUND_EXCHANGE_KWARGS'],
-            durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
-            exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
-            type_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
-        )
         yield from self._channel.publish(
             payload=message,
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
