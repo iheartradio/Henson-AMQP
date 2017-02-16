@@ -1,14 +1,17 @@
 """AMQP plugin for Henson."""
 
-import asyncio
 from collections import namedtuple
 from enum import IntEnum
 import json
-import pkg_resources
 import os
+import pkg_resources
+import queue
 
-import aioamqp
 from henson import Extension
+from pika.adapters.blocking_connection import BlockingConnection
+from pika.adapters.select_connection import SelectConnection
+from pika.connection import URLParameters
+from pika.spec import BasicProperties
 
 __all__ = ('AMQP', 'Message')
 
@@ -26,7 +29,7 @@ else:
 
 # TODO: replace this namedtuple with a message class that supports
 # acknowledgement, (de)serialization, and other convenience functions
-Message = namedtuple('Message', ('body', 'envelope', 'properties'))
+Message = namedtuple('Message', ('body', 'method', 'properties'))
 
 
 class Consumer:
@@ -43,8 +46,7 @@ class Consumer:
         # will be set later by async calls.
         self.app = app
         self._message_queue = None
-        self._transport = None
-        self._protocol = None
+        self._connection = None
         self._channel = None
 
         # Register the message acknowledgement and application teardown
@@ -52,7 +54,6 @@ class Consumer:
         self.app.message_acknowledgement(self._acknowledge_message)
         self.app.teardown(self._teardown)
 
-    @asyncio.coroutine
     def _acknowledge_message(self, app, message):
         """Acknowledge a message on the AMQP server.
 
@@ -62,23 +63,65 @@ class Consumer:
             message (Message): The message returned from the consumer to
                 the application.
         """
-        yield from self._channel.basic_client_ack(message.envelope.delivery_tag)  # NOQA: line length
+        self._channel.basic_ack(message.method.delivery_tag)
 
-    @asyncio.coroutine
-    def _teardown(self, app):
-        """Cleanup the protocol and transport before shutting down.
+    def _begin_consuming(self):
+        """Begin reading messages from the specified AMQP broker."""
+        # Create a connection to the broker
+        self._message_queue = queue.Queue(
+            maxsize=self.app.settings['AMQP_PREFETCH_LIMIT'])
+
+        def _finish_begin_consuming():
+            # Declare the queue and exchange that we expect to read from
+            self.app.logger.debug('opening channel')
+            self._channel = self._connection.channel()
+
+            self.app.logger.debug('declaring queue')
+            self._channel.queue_declare(
+                queue=self.app.settings['AMQP_INBOUND_QUEUE'],
+                durable=self.app.settings['AMQP_INBOUND_QUEUE_DURABLE'],
+            )
+            if self.app.settings['AMQP_INBOUND_EXCHANGE']:
+                self.app.logger.debug('declaring exchange')
+                self._channel.exchange_declare(
+                    exchange=self.app.settings['AMQP_INBOUND_EXCHANGE'],
+                    type=self.app.settings['AMQP_INBOUND_EXCHANGE_TYPE'],
+                    durable=self.app.settings['AMQP_INBOUND_EXCHANGE_DURABLE'],
+                    arguments=self.app.settings['AMQP_INBOUND_EXCHANGE_KWARGS'],
+                )
+                self.app.logger.debug('binding queue to exchange')
+                self._channel.queue_bind(
+                    queue=self.app.settings['AMQP_INBOUND_QUEUE'],
+                    exchange=self.app.settings['AMQP_INBOUND_EXCHANGE'],
+                    routing_key=self.app.settings['AMQP_INBOUND_ROUTING_KEY'],
+                )
+
+            # Begin reading and assign the callback function to be called
+            # with each message retrieved from the broker
+            self.app.logger.debug('configuring consumer')
+            self._channel.basic_consume(
+                queue=self.app.settings['AMQP_INBOUND_QUEUE'],
+                consumer_callback=self._enqueue_message,
+            )
+            self.app.logger.debug('starting consumer')
+            self._channel.start_consuming()
+
+        self.app.logger.debug('connecting to queue')
+        self._connection = SelectConnection(
+            URLParameters(self.app.settings['AMQP_URI']),
+            on_open_callback=_finish_begin_consuming,
+        )
+
+    def _connection_error_callback(self, exception):
+        """Handle aioamqp connection errors.
 
         Args:
-            app (henson.base.Application): The application to which this
-                Consumer belongs.
+            exception (Exception): The exception resulting from the
+                connection being closed.
         """
-        if self._protocol is not None:
-            yield from self._protocol.close()
-        if self._transport is not None:
-            self._transport.close()
+        self._message_queue.put(exception)
 
-    @asyncio.coroutine
-    def _enqueue_message(self, channel, body, envelope, properties):
+    def _enqueue_message(self, channel, method, properties, body):
         """Add fetched messages to the internal message queue.
 
         Args:
@@ -89,64 +132,13 @@ class Consumer:
                 properties about the message content (e.g. headers,
                 content_type, etc.).
         """
-        message = Message(body, envelope, properties)
-        yield from self._message_queue.put(message)
+        message = Message(body, method, properties)
+        self._message_queue.put(message)
 
-    @asyncio.coroutine
-    def _connection_error_callback(self, exception):
-        """Handle aioamqp connection errors.
+    def _teardown(self, app):
+        if self._connection is not None:
+            self._connection.close()
 
-        Args:
-            exception (Exception): The exception resulting from the
-                connection being closed.
-        """
-        yield from self._message_queue.put(exception)
-
-    @asyncio.coroutine
-    def _begin_consuming(self):
-        """Begin reading messages from the specified AMQP broker."""
-        # Create a connection to the broker
-        self._message_queue = asyncio.Queue(
-            maxsize=self.app.settings['AMQP_PREFETCH_LIMIT'])
-        self._transport, self._protocol = yield from aioamqp.connect(
-            host=self.app.settings['AMQP_HOST'],
-            port=self.app.settings['AMQP_PORT'],
-            login=self.app.settings['AMQP_USERNAME'],
-            password=self.app.settings['AMQP_PASSWORD'],
-            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
-            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
-            on_error=self._connection_error_callback,
-            **self.app.settings['AMQP_CONNECTION_KWARGS']
-        )
-
-        # Declare the queue and exchange that we expect to read from
-        self._channel = yield from self._protocol.channel()
-
-        yield from self._channel.queue_declare(
-            queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
-            durable=self.app.settings['AMQP_INBOUND_QUEUE_DURABLE'],
-        )
-        if self.app.settings['AMQP_INBOUND_EXCHANGE']:
-            yield from self._channel.exchange_declare(
-                arguments=self.app.settings['AMQP_INBOUND_EXCHANGE_KWARGS'],
-                durable=self.app.settings['AMQP_INBOUND_EXCHANGE_DURABLE'],
-                exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
-                type_name=self.app.settings['AMQP_INBOUND_EXCHANGE_TYPE'],
-            )
-            yield from self._channel.queue_bind(
-                queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
-                exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
-                routing_key=self.app.settings['AMQP_INBOUND_ROUTING_KEY'],
-            )
-
-        # Begin reading and assign the callback function to be called
-        # with each message retrieved from the broker
-        yield from self._channel.basic_consume(
-            queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
-            callback=self._enqueue_message,
-        )
-
-    @asyncio.coroutine
     def read(self):
         """Read a single message from the message queue.
 
@@ -163,10 +155,12 @@ class Consumer:
         # On the first call to read, connect to the AMQP server and
         # begin consuming messages.
         if self._message_queue is None:
-            yield from self._begin_consuming()
+            self.app.logger.debug('starting consumer')
+            self._begin_consuming()
 
         # Read the next result from the internal message queue.
-        result = yield from self._message_queue.get()
+        self.app.logger.debug('getting from queue')
+        result = self._message_queue.get()
 
         # If the result is an exception, the connection was closed, and
         # the consumer was unable to recover. Raise the original
@@ -177,7 +171,6 @@ class Consumer:
         # Finally, return the result if it is a valid message.
         return result
 
-    @asyncio.coroutine
     def retry(self, app, message):
         """Requeue a message to be processed again.
 
@@ -194,10 +187,10 @@ class Consumer:
             serializeable. If they are not, a custom function may be
             used in its place.
         """
-        yield from self._channel.publish(
-            payload=json.dumps(message).encode('utf-8'),
-            exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
+        self._channel.basic_publish(
+            exchange=self.app.settings['AMQP_INBOUND_EXCHANGE'],
             routing_key=self.app.settings['AMQP_INBOUND_ROUTING_KEY'],
+            body=json.dumps(message),
         )
 
 
@@ -213,37 +206,37 @@ class Producer:
         """Initialize the producer."""
         # Store a reference to the application for later use.
         self.app = app
-        self._transport = None
-        self._protocol = None
+        self._connection = None
         self._channel = None
 
         # Register a teardown callback.
         self.app.teardown(self._teardown)
 
-    @asyncio.coroutine
     def _connect(self):
-        self._transport, self._protocol = yield from aioamqp.connect(
-            host=self.app.settings['AMQP_HOST'],
-            port=self.app.settings['AMQP_PORT'],
-            login=self.app.settings['AMQP_USERNAME'],
-            password=self.app.settings['AMQP_PASSWORD'],
-            virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
-            heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
-            **self.app.settings['AMQP_CONNECTION_KWARGS']
+        self._connection = BlockingConnection(
+            URLParameters(self.app.settings['AMQP_URI']),
         )
-        self._channel = yield from self._protocol.channel()
+        self._channel = self._connection.channel()
+        self._channel.confirm_delivery()
 
-    @asyncio.coroutine
+    def _connection_error_callback(self, exception):
+        """Handle aioamqp connection errors.
+
+        Args:
+            exception (Exception): The exception resulting from the
+                connection being closed.
+        """
+        self._message_queue.put(exception)
+
     def _declare_exchange(self):
         """Declare the configured AMQP exchange."""
-        yield from self._channel.exchange_declare(
-            arguments=self.app.settings['AMQP_OUTBOUND_EXCHANGE_KWARGS'],
+        self._channel.exchange_declare(
+            exchange=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
+            type=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
             durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
-            exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
-            type_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
+            arguments=self.app.settings['AMQP_OUTBOUND_EXCHANGE_KWARGS'],
         )
 
-    @asyncio.coroutine
     def _teardown(self, app):
         """Cleanup the protocol and transport before shutting down.
 
@@ -251,12 +244,9 @@ class Producer:
             app (henson.base.Application): The application to which this
                 Consumer belongs.
         """
-        if self._protocol is not None:
-            yield from self._protocol.close()
-        if self._transport is not None:
-            self._transport.close()
+        if self._connection is not None:
+            self._connection.close()
 
-    @asyncio.coroutine
     def send(self, message, *, routing_key=None):
         """Send a message to the configured AMQP broker and exchange.
 
@@ -267,19 +257,19 @@ class Producer:
                 ``AMQP_OUTBOUND_ROUTING_KEY`` application setting will
                 be used. Defaults to ``None``.
         """
-        properties = {
-            'delivery_mode': self.app.settings['AMQP_DELIVERY_MODE'].value,
-        }
+        properties = BasicProperties(
+            delivery_mode=self.app.settings['AMQP_DELIVERY_MODE'].value,
+        )
         if not self._channel:
-            yield from self._connect()
-            yield from self._declare_exchange()
+            self._connect()
+            self._declare_exchange()
 
         if routing_key is None:
             routing_key = self.app.settings['AMQP_OUTBOUND_ROUTING_KEY']
-        yield from self._channel.publish(
-            payload=message,
-            exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
+        self._channel.basic_publish(
+            body=message,
             routing_key=routing_key,
+            exchange=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
             properties=properties,
         )
 
@@ -298,13 +288,7 @@ class AMQP(Extension):
 
     DEFAULT_SETTINGS = {
         # Connection settings
-        'AMQP_HOST': 'localhost',
-        'AMQP_PORT': 5672,
-        'AMQP_USERNAME': 'guest',
-        'AMQP_PASSWORD': 'guest',
-        'AMQP_VIRTUAL_HOST': '/',
-        'AMQP_HEARTBEAT_INTERVAL': 60,
-        'AMQP_CONNECTION_KWARGS': {},
+        'AMQP_URI': 'amqp://guest:guest@localhost/%2F',
 
         # Consumer settings
         'REGISTER_CONSUMER': False,

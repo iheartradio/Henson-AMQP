@@ -31,11 +31,10 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'Henson>=1.0.0,<2.0.0',
-        'aioamqp>=0.5.1,<1.0.0',
+        'pika',
     ],
     tests_require=[
         'pytest',
-        'pytest-asyncio',
     ],
     cmdclass={
         'test': PyTest,

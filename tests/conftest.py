@@ -3,8 +3,7 @@
 import os
 from unittest import mock
 
-from aioamqp.envelope import Envelope
-from aioamqp.properties import Properties
+import pika.spec
 from henson import Application
 import pytest
 
@@ -45,6 +44,12 @@ def test_consumer(test_amqp):
 
 
 @pytest.fixture
+def test_method():
+    """Return a mock pika.spec.Basic.Deliver."""
+    return mock.Mock(spec=pika.spec.Basic.Deliver)
+
+
+@pytest.fixture
 def test_producer(test_amqp):
     """Return a producer created by the test AMQP instance."""
     producer = test_amqp.producer()
@@ -52,12 +57,6 @@ def test_producer(test_amqp):
 
 
 @pytest.fixture
-def test_envelope():
-    """Return a mock aioamqp.envelope.Envelope."""
-    return mock.Mock(spec=Envelope)
-
-
-@pytest.fixture
 def test_properties():
-    """Return a mock aioamqp.properties.Properties."""
-    return mock.Mock(spec=Properties)
+    """Return a mock pika.spec.BasicProperties."""
+    return mock.Mock(spec=pika.spec.BasicProperties)
