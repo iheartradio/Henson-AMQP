@@ -121,6 +121,8 @@ class Consumer:
 
         # Declare the queue and exchange that we expect to read from
         self._channel = yield from self._protocol.channel()
+        yield from self._channel.basic_qos(
+            prefetch_count=self.app.settings['AMQP_PREFETCH_LIMIT'])
 
         yield from self._channel.queue_declare(
             queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
