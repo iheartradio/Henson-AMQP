@@ -159,6 +159,7 @@ class Consumer:
         Raises:
             aioamqp.exceptions.AioamqpException: The exception raised on
                 connection close.
+
         """
         # On the first call to read, connect to the AMQP server and
         # begin consuming messages.
@@ -348,6 +349,7 @@ class AMQP(Extension):
             Consumer: A new consumer object that can be used to read
                 from the AMQP broker and queue specified the
                 Application's settings.
+
         """
         return Consumer(self.app)
 
@@ -358,6 +360,7 @@ class AMQP(Extension):
             Producer: A new producer object that can be used to write to
                 the AMQP broker and exchange specified by the
                 Application's settings.
+
         """
         if not hasattr(self, '_producer'):
             self._producer = Producer(self.app)
