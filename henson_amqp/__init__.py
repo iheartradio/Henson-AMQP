@@ -269,8 +269,9 @@ class Producer:
                 be used. Defaults to ``None``.
         """
         properties = {
-            'delivery_mode': self.app.settings['AMQP_DELIVERY_MODE'].value,
+            'delivery_mode': self.app.settings['AMQP_DELIVERY_MODE'],
         }
+
         if not self._channel:
             yield from self._connect()
             yield from self._declare_exchange()

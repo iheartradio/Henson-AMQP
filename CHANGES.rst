@@ -7,6 +7,8 @@ Version 0.6.0
 
 Release TBD
 
+- Support both ``int`` values and existing ``henson_amqp.DeliveryMode`` ``enums``
+  for the ``AMQP_DELIVERY_MODE`` setting
 - Stop declaring the exchange with every message sent
 
 
