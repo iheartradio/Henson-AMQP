@@ -8,7 +8,7 @@ from henson_amqp import DeliveryMode
 
 
 @pytest.mark.parametrize(
-    'delivery_mode', (DeliveryMode.NONPERSISTENT, DeliveryMode.PERSISTENT))
+    'delivery_mode', (DeliveryMode.NONPERSISTENT, DeliveryMode.PERSISTENT, 1, 2))
 @pytest.mark.asyncio
 def test_read_write(test_consumer, test_producer, delivery_mode):
     """Test that reading from the consumer returns a message from amqp."""
