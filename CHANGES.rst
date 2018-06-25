@@ -5,7 +5,7 @@ Changelog
 Version 0.6.0
 =============
 
-Release TBD
+Released 2018-06-25
 
 - Support both ``int`` values and existing ``henson_amqp.DeliveryMode`` ``enums``
   for the ``AMQP_DELIVERY_MODE`` setting
