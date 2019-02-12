@@ -2,6 +2,14 @@
 Changelog
 =========
 
+Version 0.7.0
+=============
+
+Released 2019-02-20
+
+- Allow callers of ``Producer.send`` to specify an exchange name
+
+
 Version 0.6.0
 =============
 

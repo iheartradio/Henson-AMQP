@@ -63,6 +63,37 @@ def test_retry(test_consumer):
 
 
 @pytest.mark.asyncio
+def test_produce_exhange_name(test_producer):
+    """Test that providing an exchange name works when sending."""
+    test_producer._channel = mock.MagicMock()
+    message = 'message acknowledged'
+    exchange_name = 'diverted'
+
+    yield from test_producer.send(message, exchange_name=exchange_name)
+    test_producer._channel.publish.assert_called_with(
+        payload=message,
+        routing_key=mock.ANY,
+        exchange_name=exchange_name,
+        properties=mock.ANY,
+    )
+
+
+@pytest.mark.asyncio
+def test_produce_no_exchange_name(test_producer):
+    """Test that the default exchange is used when none is provided."""
+    test_producer._channel = mock.MagicMock()
+    message = 'message acknowledged'
+    yield from test_producer.send(message)
+
+    test_producer._channel.publish.assert_called_with(
+        payload=message,
+        routing_key=mock.ANY,
+        exchange_name=test_producer.app.settings['AMQP_OUTBOUND_EXCHANGE'],
+        properties=mock.ANY,
+    )
+
+
+@pytest.mark.asyncio
 def test_produce_routing_key(test_producer):
     """Test that providing a routing key when sending works."""
     test_producer._channel = mock.MagicMock()
