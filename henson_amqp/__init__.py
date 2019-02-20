@@ -258,7 +258,7 @@ class Producer:
             self._transport.close()
 
     @asyncio.coroutine
-    def send(self, message, *, routing_key=None):
+    def send(self, message, *, exchange_name=None, routing_key=None):
         """Send a message to the configured AMQP broker and exchange.
 
         Args:
@@ -276,11 +276,14 @@ class Producer:
             yield from self._connect()
             yield from self._declare_exchange()
 
+        if exchange_name is None:
+            exchange_name = self.app.settings['AMQP_OUTBOUND_EXCHANGE']
         if routing_key is None:
             routing_key = self.app.settings['AMQP_OUTBOUND_ROUTING_KEY']
+
         yield from self._channel.publish(
             payload=message,
-            exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
+            exchange_name=exchange_name,
             routing_key=routing_key,
             properties=properties,
         )
