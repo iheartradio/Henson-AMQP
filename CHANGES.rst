@@ -2,6 +2,13 @@
 Changelog
 =========
 
+Version 0.7.1
+=============
+
+Released 2019-08-20
+
+- Update dependency requirements to allow Henson >=2.0
+
 Version 0.7.0
 =============
 
