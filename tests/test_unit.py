@@ -13,6 +13,8 @@ from henson_amqp import AMQP, Consumer, Message
 def test_register_consumer(test_app):
     """Test that consumer registration behaves correctly."""
     test_app.settings['REGISTER_CONSUMER'] = True
+    test_app.settings['AMQP_PREFETCH_COUNT'] = 1
+    test_app.settings['AMQP_PREFETCH_SIZE'] = 1
     AMQP(test_app)
     assert isinstance(test_app.consumer, Consumer)
 
