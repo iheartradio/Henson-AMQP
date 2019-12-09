@@ -21,8 +21,8 @@ def read(filename):
 
 setup(
     name='Henson-AMQP',
-    version='0.7.0',
-    author='Andy Dirnberger, Jon Banafato, and others',
+    version='0.8.0',
+    author='Leonard Bedner, Christian Paul, and others',
     author_email='henson@iheart.com',
     url='https://henson-amqp.readthedocs.io',
     description='A library for interacting with AMQP with a Henson application.',
