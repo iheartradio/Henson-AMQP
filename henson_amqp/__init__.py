@@ -35,6 +35,7 @@ class Consumer:
     Args:
         app (henson.base.Application): The application for which this
             consumer consumes.
+
     """
 
     def __init__(self, app):
@@ -61,6 +62,7 @@ class Consumer:
                 processed the message.
             message (Message): The message returned from the consumer to
                 the application.
+
         """
         yield from self._channel.basic_client_ack(message.envelope.delivery_tag)  # NOQA: line length
 
@@ -71,6 +73,7 @@ class Consumer:
         Args:
             app (henson.base.Application): The application to which this
                 Consumer belongs.
+
         """
         if self._protocol is not None:
             yield from self._protocol.close()
@@ -88,6 +91,7 @@ class Consumer:
             properties (aioamqp.properties.Properties): Additional
                 properties about the message content (e.g. headers,
                 content_type, etc.).
+
         """
         message = Message(body, envelope, properties)
         yield from self._message_queue.put(message)
@@ -99,6 +103,7 @@ class Consumer:
         Args:
             exception (Exception): The exception resulting from the
                 connection being closed.
+
         """
         yield from self._message_queue.put(exception)
 
@@ -126,6 +131,12 @@ class Consumer:
             queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
             durable=self.app.settings['AMQP_INBOUND_QUEUE_DURABLE'],
         )
+
+        yield from self._channel.basic_qos(
+            prefetch_count=self.app.settings['AMQP_PREFETCH_COUNT'],
+            prefetch_size=self.app.settings['AMQP_PREFETCH_SIZE'],
+        )
+
         if self.app.settings['AMQP_INBOUND_EXCHANGE']:
             yield from self._channel.exchange_declare(
                 arguments=self.app.settings['AMQP_INBOUND_EXCHANGE_KWARGS'],
@@ -194,6 +205,7 @@ class Consumer:
         .. note:: This function assumes that messages are JSON
             serializeable. If they are not, a custom function may be
             used in its place.
+
         """
         yield from self._channel.publish(
             payload=json.dumps(message).encode('utf-8'),
@@ -208,6 +220,7 @@ class Producer:
     Args:
         app (henson.base.Application): The application for which this
             producer produces.
+
     """
 
     def __init__(self, app):
@@ -251,6 +264,7 @@ class Producer:
         Args:
             app (henson.base.Application): The application to which this
                 Consumer belongs.
+
         """
         if self._protocol is not None:
             yield from self._protocol.close()
@@ -267,6 +281,7 @@ class Producer:
                 send the message. If set to ``None``, the
                 ``AMQP_OUTBOUND_ROUTING_KEY`` application setting will
                 be used. Defaults to ``None``.
+
         """
         properties = {
             'delivery_mode': self.app.settings['AMQP_DELIVERY_MODE'],
@@ -322,6 +337,8 @@ class AMQP(Extension):
         'AMQP_INBOUND_QUEUE_DURABLE': False,
         'AMQP_INBOUND_ROUTING_KEY': '',
         'AMQP_PREFETCH_LIMIT': 0,
+        'AMQP_PREFETCH_COUNT': 0,
+        'AMQP_PREFETCH_SIZE': 0,
 
         # Producer settings
         'AMQP_OUTBOUND_EXCHANGE': '',
@@ -341,6 +358,7 @@ class AMQP(Extension):
         Args:
             app (henson.base.Application): The application instance that
                 will be initialized.
+
         """
         super().init_app(app)
         if app.settings['REGISTER_CONSUMER']:
