@@ -2,6 +2,14 @@
 Changelog
 =========
 
+Version 0.8.0
+=============
+
+Released 2020-02-05
+
+- Add support for ``AMQP_PREFETCH_COUNT`` and ``AMQP_PREFETCH_SIZE``
+
+
 Version 0.7.0
 =============
 
