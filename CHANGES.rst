@@ -2,6 +2,14 @@
 Changelog
 =========
 
+Version 0.8.1
+=============
+
+Released 2020-04-13
+
+- Update Henson version requirement to allow versions less than 3.0
+
+
 Version 0.8.0
 =============
 
