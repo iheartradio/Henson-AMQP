@@ -8,3 +8,4 @@ The following folks have contributed to making this library possible.
 * Andy Dirnberger (`@dirn <https://github.com/dirn>`_)
 * Leonard Bedner (`@lbedner <https://github.com/lbedner>`_)
 * Christian Paul (`@Christian-Paul <https://github.com/Christian-Paul>`_)
+* Emmanuel Agbanyo (`@e-agbanyo <https://github.com/e-agbanyo>`_)
