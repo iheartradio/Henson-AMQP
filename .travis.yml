@@ -1,22 +1,22 @@
-dist: trusty
+dist: xenial
 
-# Use Python
+addons:
+  apt:
+    packages:
+      - rabbitmq-server
+
 language: python
 
 matrix:
   include:
-    - python: 3.5
-      env: TOX_ENV=py35
-    - python: 3.6
-      env: TOX_ENV=py36
-    - python: 3.6
+    - python: 3.8
+      env: TOX_ENV=py38
+    - python: 3.9
+      env: TOX_ENV=py39
+    - python: 3.9
       env: TOX_ENV=docs
-    - python: 3.6
+    - python: 3.9
       env: TOX_ENV=pep8
-
-# Use rabbitmq during tests
-services:
-  - rabbitmq
 
 # Install the test runner.
 install: pip install tox

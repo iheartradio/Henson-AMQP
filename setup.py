@@ -21,7 +21,7 @@ def read(filename):
 
 setup(
     name='Henson-AMQP',
-    version='0.8.1',
+    version='0.9.0',
     author='Leonard Bedner, Christian Paul, and others',
     author_email='henson@iheart.com',
     url='https://henson-amqp.readthedocs.io',
@@ -31,7 +31,7 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'Henson>=1.0.0,<3.0.0',
-        'aioamqp>=0.5.1,<1.0.0,!=0.14.0',
+        'aioamqp>=0.5.1,<1.0.0',
     ],
     tests_require=[
         'pytest',
@@ -47,8 +47,8 @@ setup(
         'Natural Language :: English',
         'Operating System :: POSIX',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ]
