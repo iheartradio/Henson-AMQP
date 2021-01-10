@@ -53,8 +53,7 @@ class Consumer:
         self.app.message_acknowledgement(self._acknowledge_message)
         self.app.teardown(self._teardown)
 
-    @asyncio.coroutine
-    def _acknowledge_message(self, app, message):
+    async def _acknowledge_message(self, app, message):
         """Acknowledge a message on the AMQP server.
 
         Args:
@@ -64,10 +63,9 @@ class Consumer:
                 the application.
 
         """
-        yield from self._channel.basic_client_ack(message.envelope.delivery_tag)  # NOQA: line length
+        await self._channel.basic_client_ack(message.envelope.delivery_tag)  # NOQA: line length
 
-    @asyncio.coroutine
-    def _teardown(self, app):
+    async def _teardown(self, app):
         """Cleanup the protocol and transport before shutting down.
 
         Args:
@@ -76,12 +74,11 @@ class Consumer:
 
         """
         if self._protocol is not None:
-            yield from self._protocol.close()
+            await self._protocol.close()
         if self._transport is not None:
             self._transport.close()
 
-    @asyncio.coroutine
-    def _enqueue_message(self, channel, body, envelope, properties):
+    async def _enqueue_message(self, channel, body, envelope, properties):
         """Add fetched messages to the internal message queue.
 
         Args:
@@ -94,10 +91,9 @@ class Consumer:
 
         """
         message = Message(body, envelope, properties)
-        yield from self._message_queue.put(message)
+        await self._message_queue.put(message)
 
-    @asyncio.coroutine
-    def _connection_error_callback(self, exception):
+    async def _connection_error_callback(self, exception):
         """Handle aioamqp connection errors.
 
         Args:
@@ -105,15 +101,14 @@ class Consumer:
                 connection being closed.
 
         """
-        yield from self._message_queue.put(exception)
+        await self._message_queue.put(exception)
 
-    @asyncio.coroutine
-    def _begin_consuming(self):
+    async def _begin_consuming(self):
         """Begin reading messages from the specified AMQP broker."""
         # Create a connection to the broker
         self._message_queue = asyncio.Queue(
             maxsize=self.app.settings['AMQP_PREFETCH_LIMIT'])
-        self._transport, self._protocol = yield from aioamqp.connect(
+        self._transport, self._protocol = await aioamqp.connect(
             host=self.app.settings['AMQP_HOST'],
             port=self.app.settings['AMQP_PORT'],
             login=self.app.settings['AMQP_USERNAME'],
@@ -121,30 +116,31 @@ class Consumer:
             virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
             heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
             on_error=self._connection_error_callback,
+            login_method='PLAIN',
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
 
         # Declare the queue and exchange that we expect to read from
-        self._channel = yield from self._protocol.channel()
+        self._channel = await self._protocol.channel()
 
-        yield from self._channel.queue_declare(
+        await self._channel.queue_declare(
             queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
             durable=self.app.settings['AMQP_INBOUND_QUEUE_DURABLE'],
         )
 
-        yield from self._channel.basic_qos(
+        await self._channel.basic_qos(
             prefetch_count=self.app.settings['AMQP_PREFETCH_COUNT'],
             prefetch_size=self.app.settings['AMQP_PREFETCH_SIZE'],
         )
 
         if self.app.settings['AMQP_INBOUND_EXCHANGE']:
-            yield from self._channel.exchange_declare(
+            await self._channel.exchange_declare(
                 arguments=self.app.settings['AMQP_INBOUND_EXCHANGE_KWARGS'],
                 durable=self.app.settings['AMQP_INBOUND_EXCHANGE_DURABLE'],
                 exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
                 type_name=self.app.settings['AMQP_INBOUND_EXCHANGE_TYPE'],
             )
-            yield from self._channel.queue_bind(
+            await self._channel.queue_bind(
                 queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
                 exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
                 routing_key=self.app.settings['AMQP_INBOUND_ROUTING_KEY'],
@@ -152,13 +148,12 @@ class Consumer:
 
         # Begin reading and assign the callback function to be called
         # with each message retrieved from the broker
-        yield from self._channel.basic_consume(
+        await self._channel.basic_consume(
             queue_name=self.app.settings['AMQP_INBOUND_QUEUE'],
             callback=self._enqueue_message,
         )
 
-    @asyncio.coroutine
-    def read(self):
+    async def read(self):
         """Read a single message from the message queue.
 
         If the consumer has not yet begun reading from the AMQP broker,
@@ -175,10 +170,10 @@ class Consumer:
         # On the first call to read, connect to the AMQP server and
         # begin consuming messages.
         if self._message_queue is None:
-            yield from self._begin_consuming()
+            await self._begin_consuming()
 
         # Read the next result from the internal message queue.
-        result = yield from self._message_queue.get()
+        result = await self._message_queue.get()
 
         # If the result is an exception, the connection was closed, and
         # the consumer was unable to recover. Raise the original
@@ -189,8 +184,7 @@ class Consumer:
         # Finally, return the result if it is a valid message.
         return result
 
-    @asyncio.coroutine
-    def retry(self, app, message):
+    async def retry(self, app, message):
         """Requeue a message to be processed again.
 
         This coroutine is meant for use with the
@@ -207,7 +201,7 @@ class Consumer:
             used in its place.
 
         """
-        yield from self._channel.publish(
+        await self._channel.publish(
             payload=json.dumps(message).encode('utf-8'),
             exchange_name=self.app.settings['AMQP_INBOUND_EXCHANGE'],
             routing_key=self.app.settings['AMQP_INBOUND_ROUTING_KEY'],
@@ -234,9 +228,8 @@ class Producer:
         # Register a teardown callback.
         self.app.teardown(self._teardown)
 
-    @asyncio.coroutine
-    def _connect(self):
-        self._transport, self._protocol = yield from aioamqp.connect(
+    async def _connect(self):
+        self._transport, self._protocol = await aioamqp.connect(
             host=self.app.settings['AMQP_HOST'],
             port=self.app.settings['AMQP_PORT'],
             login=self.app.settings['AMQP_USERNAME'],
@@ -245,20 +238,18 @@ class Producer:
             heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
-        self._channel = yield from self._protocol.channel()
+        self._channel = await self._protocol.channel()
 
-    @asyncio.coroutine
-    def _declare_exchange(self):
+    async def _declare_exchange(self):
         """Declare the configured AMQP exchange."""
-        yield from self._channel.exchange_declare(
+        await self._channel.exchange_declare(
             arguments=self.app.settings['AMQP_OUTBOUND_EXCHANGE_KWARGS'],
             durable=self.app.settings['AMQP_OUTBOUND_EXCHANGE_DURABLE'],
             exchange_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE'],
             type_name=self.app.settings['AMQP_OUTBOUND_EXCHANGE_TYPE'],
         )
 
-    @asyncio.coroutine
-    def _teardown(self, app):
+    async def _teardown(self, app):
         """Cleanup the protocol and transport before shutting down.
 
         Args:
@@ -267,12 +258,11 @@ class Producer:
 
         """
         if self._protocol is not None:
-            yield from self._protocol.close()
+            await self._protocol.close()
         if self._transport is not None:
             self._transport.close()
 
-    @asyncio.coroutine
-    def send(self, message, *, exchange_name=None, routing_key=None):
+    async def send(self, message, *, exchange_name=None, routing_key=None):
         """Send a message to the configured AMQP broker and exchange.
 
         Args:
@@ -288,15 +278,15 @@ class Producer:
         }
 
         if not self._channel:
-            yield from self._connect()
-            yield from self._declare_exchange()
+            await self._connect()
+            await self._declare_exchange()
 
         if exchange_name is None:
             exchange_name = self.app.settings['AMQP_OUTBOUND_EXCHANGE']
         if routing_key is None:
             routing_key = self.app.settings['AMQP_OUTBOUND_ROUTING_KEY']
 
-        yield from self._channel.publish(
+        await self._channel.publish(
             payload=message,
             exchange_name=exchange_name,
             routing_key=routing_key,

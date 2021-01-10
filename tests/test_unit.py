@@ -26,12 +26,12 @@ def test_no_register_consumer(test_app):
 
 
 @pytest.mark.asyncio
-def test_enqueue_message(test_consumer, test_envelope, test_properties):
+async def test_enqueue_message(test_consumer, test_envelope, test_properties):
     """Test adding messages to the consumer's message queue."""
     # Mock away the channel for unit tests
     test_consumer.channel = mock.MagicMock()
     test_consumer._message_queue = asyncio.Queue()
-    yield from test_consumer._enqueue_message(
+    await test_consumer._enqueue_message(
         test_consumer.channel, b'test', test_envelope, test_properties)
     expected_message = Message(b'test', test_envelope, test_properties)
     actual_message = test_consumer._message_queue.get_nowait()
@@ -39,7 +39,7 @@ def test_enqueue_message(test_consumer, test_envelope, test_properties):
 
 
 @pytest.mark.asyncio
-def test_read(test_consumer, test_envelope, test_properties):
+async def test_read(test_consumer, test_envelope, test_properties):
     """Test that reading returns a message from the queue."""
     # Mock away the channel for unit tests
     test_consumer._channel = mock.MagicMock()
@@ -47,16 +47,16 @@ def test_read(test_consumer, test_envelope, test_properties):
     # Get a consumer and add an mock message to its queue
     message = Message(b'foo', test_envelope, test_properties)
     test_consumer._message_queue.put_nowait(message)
-    read_message = (yield from test_consumer.read())
+    read_message = (await test_consumer.read())
     assert read_message == message
 
 
 @pytest.mark.asyncio
-def test_retry(test_consumer):
+async def test_retry(test_consumer):
     """Test that the included retry function works."""
-    test_consumer._channel = mock.MagicMock()
+    test_consumer._channel = mock.AsyncMock()
     message = {"spam": "eggs"}
-    yield from test_consumer.retry(test_consumer.app, message)
+    await test_consumer.retry(test_consumer.app, message)
     test_consumer._channel.publish.assert_called_with(
         payload=json.dumps(message).encode('utf-8'),
         exchange_name=test_consumer.app.settings['AMQP_INBOUND_EXCHANGE'],
@@ -65,13 +65,13 @@ def test_retry(test_consumer):
 
 
 @pytest.mark.asyncio
-def test_produce_exhange_name(test_producer):
+async def test_produce_exhange_name(test_producer):
     """Test that providing an exchange name works when sending."""
-    test_producer._channel = mock.MagicMock()
+    test_producer._channel = mock.AsyncMock()
     message = 'message acknowledged'
     exchange_name = 'diverted'
 
-    yield from test_producer.send(message, exchange_name=exchange_name)
+    await test_producer.send(message, exchange_name=exchange_name)
     test_producer._channel.publish.assert_called_with(
         payload=message,
         routing_key=mock.ANY,
@@ -81,11 +81,11 @@ def test_produce_exhange_name(test_producer):
 
 
 @pytest.mark.asyncio
-def test_produce_no_exchange_name(test_producer):
+async def test_produce_no_exchange_name(test_producer):
     """Test that the default exchange is used when none is provided."""
-    test_producer._channel = mock.MagicMock()
+    test_producer._channel = mock.AsyncMock()
     message = 'message acknowledged'
-    yield from test_producer.send(message)
+    await test_producer.send(message)
 
     test_producer._channel.publish.assert_called_with(
         payload=message,
@@ -96,13 +96,13 @@ def test_produce_no_exchange_name(test_producer):
 
 
 @pytest.mark.asyncio
-def test_produce_routing_key(test_producer):
+async def test_produce_routing_key(test_producer):
     """Test that providing a routing key when sending works."""
-    test_producer._channel = mock.MagicMock()
+    test_producer._channel = mock.AsyncMock()
     message = 'spam and eggs'
     routing_key = 'parrot'
 
-    yield from test_producer.send(message, routing_key=routing_key)
+    await test_producer.send(message, routing_key=routing_key)
     test_producer._channel.publish.assert_called_with(
         payload=message,
         routing_key=routing_key,
@@ -112,11 +112,11 @@ def test_produce_routing_key(test_producer):
 
 
 @pytest.mark.asyncio
-def test_produce_no_routing_key(test_producer):
+async def test_produce_no_routing_key(test_producer):
     """Test that a default routing key is used when none is provided."""
-    test_producer._channel = mock.MagicMock()
+    test_producer._channel = mock.AsyncMock()
     message = 'spam and eggs'
-    yield from test_producer.send(message)
+    await test_producer.send(message)
 
     test_producer._channel.publish.assert_called_with(
         payload=message,
