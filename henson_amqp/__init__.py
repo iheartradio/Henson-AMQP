@@ -116,6 +116,7 @@ class Consumer:
             virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
             heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
             on_error=self._connection_error_callback,
+            ssl=self.app.settings['AMQP_USE_SSL'],
             login_method='PLAIN',
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
@@ -236,6 +237,7 @@ class Producer:
             password=self.app.settings['AMQP_PASSWORD'],
             virtualhost=self.app.settings['AMQP_VIRTUAL_HOST'],
             heartbeat=self.app.settings['AMQP_HEARTBEAT_INTERVAL'],
+            ssl=self.app.settings['AMQP_USE_SSL'],
             **self.app.settings['AMQP_CONNECTION_KWARGS']
         )
         self._channel = await self._protocol.channel()
@@ -315,6 +317,7 @@ class AMQP(Extension):
         'AMQP_VIRTUAL_HOST': '/',
         'AMQP_HEARTBEAT_INTERVAL': 60,
         'AMQP_CONNECTION_KWARGS': {},
+        'AMQP_USE_SSL': False,
 
         # Consumer settings
         'REGISTER_CONSUMER': False,
