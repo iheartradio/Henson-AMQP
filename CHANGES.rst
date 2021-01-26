@@ -2,6 +2,14 @@
 Changelog
 =========
 
+Version 0.9.0
+=============
+
+Released 2021-01-26
+
+- Drop support for Python < 3.8, add support for Python >= 3.8
+- Add SSL support
+
 Version 0.8.1
 =============
 
